@@ -335,42 +335,47 @@
             }
         }
 
-        // --- GLOBAL INTERNET P2P ENGINE (STUN + FREE TURN RELAYS) ---
+        // --- GLOBAL NETWORK P2P ENGINE (ROBUST STUN + MULTI-RELAY TURN) ---
         const pcConfig = { 
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
                 { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject@gmail.com', credential: 'openrelayproject' },
                 { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject@gmail.com', credential: 'openrelayproject' }
-            ] 
+            ],
+            iceTransportPolicy: 'all'
         };
         let peerConnection, localStream;
 
-        async function createPeerConnection(targetCleanPhone) {
+        async function createPeerConnection(targetCleanPhone, isAudioOnly) {
             if (peerConnection) { peerConnection.close(); peerConnection = null; }
             peerConnection = new RTCPeerConnection(pcConfig);
 
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: !isAudioOnly });
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-                const localVideo = document.getElementById("local-video");
-                localVideo.srcObject = localStream;
-                await localVideo.play().catch(e => console.log(e));
+                if (!isAudioOnly) {
+                    const localVideo = document.getElementById("local-video");
+                    localVideo.srcObject = localStream;
+                    await localVideo.play().catch(e => console.log(e));
+                }
             } catch (err) {
                 alert("Camera/Microphone permission denied or unavailable.");
                 return false;
             }
 
             peerConnection.ontrack = event => {
-                const remoteVideo = document.getElementById("remote-video");
-                if (event.streams && event.streams[0]) {
-                    remoteVideo.srcObject = event.streams[0];
-                } else {
-                    let inboundStream = new MediaStream();
-                    inboundStream.addTrack(event.track);
-                    remoteVideo.srcObject = inboundStream;
+                if (!isAudioOnly) {
+                    const remoteVideo = document.getElementById("remote-video");
+                    if (event.streams && event.streams[0]) {
+                        remoteVideo.srcObject = event.streams[0];
+                    } else {
+                        let inboundStream = new MediaStream();
+                        inboundStream.addTrack(event.track);
+                        remoteVideo.srcObject = inboundStream;
+                    }
+                    remoteVideo.play().catch(e => console.log(e));
                 }
-                remoteVideo.play().catch(e => console.log(e));
                 document.getElementById("call-status-label").innerText = "Connected";
             };
 
@@ -390,12 +395,12 @@
             document.getElementById("call-screen").classList.remove("hidden");
             document.getElementById("call-status-label").innerText = "Calling...";
 
-            const success = await createPeerConnection(activeTargetClean);
+            const success = await createPeerConnection(activeTargetClean, isAudioOnly);
             if (!success) return;
 
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
-            set(ref(db, `calls/${activeTargetClean}/offer`), { sender: myPhone, sdp: offer });
+            set(ref(db, `calls/${activeTargetClean}/offer`), { sender: myPhone, sdp: offer, audioOnly: isAudioOnly });
 
             onValue(ref(db, `calls/${sanitizedMyPhone}/answer`), snapshot => {
                 const ans = snapshot.val();
@@ -425,7 +430,7 @@
                 document.getElementById("call-status-label").innerText = "Connecting...";
 
                 activeTargetClean = data.sender.replace(/\D/g,'');
-                const success = await createPeerConnection(activeTargetClean);
+                const success = await createPeerConnection(activeTargetClean, data.audioOnly);
                 if (!success) return;
 
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
