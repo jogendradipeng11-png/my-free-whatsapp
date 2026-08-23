@@ -3,17 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Free P2P WhatsApp & IMO Clone</title>
+    <title>Free P2P WhatsApp & IMO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="manifest" href="manifest.json">
 </head>
 <body class="bg-[#0b141a] text-gray-100 h-screen flex flex-col overflow-hidden">
 
-    <!-- TOP WHATSAPP TABS -->
-    <div class="bg-[#202c33] border-b border-gray-800 flex justify-around text-sm font-medium py-3 text-gray-300">
-        <button onclick="switchTab('chats')" id="btn-chats" class="text-emerald-400 border-b-2 border-emerald-400 pb-1">Chats</button>
-        <button onclick="switchTab('status')" id="btn-status" class="hover:text-white pb-1">Status</button>
-        <button onclick="switchTab('calls')" id="btn-calls" class="hover:text-white pb-1">Calls</button>
+    <!-- TOP WHATSAPP TABS & INSTALL BUTTON -->
+    <div class="bg-[#202c33] border-b border-gray-800 flex justify-between items-center px-4 py-2.5 text-sm font-medium text-gray-300">
+        <div class="flex space-x-6">
+            <button onclick="switchTab('chats')" id="btn-chats" class="text-emerald-400 border-b-2 border-emerald-400 pb-1">Chats</button>
+            <button onclick="switchTab('status')" id="btn-status" class="hover:text-white pb-1">Status</button>
+            <button onclick="switchTab('calls')" id="btn-calls" class="hover:text-white pb-1">Calls</button>
+        </div>
+        <!-- PWA Install Button (Hidden until browser triggers install prompt) -->
+        <button id="install-btn" style="display:none;" onclick="installPWA()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-lg animate-pulse">
+            📲 Install App
+        </button>
     </div>
 
     <!-- MAIN APP CONTAINER -->
@@ -91,9 +97,8 @@
                 </div>
             </div>
 
-            <!-- Input Footer (Text, Image, Video, Voice, Location) -->
+            <!-- Input Footer -->
             <div class="p-3 bg-[#202c33] border-t border-gray-800 flex items-center space-x-2">
-                <!-- Hidden file inputs for photo and video sharing -->
                 <input type="file" id="image-file-input" accept="image/*" class="hidden" onchange="sendMediaFile(this, 'image')">
                 <input type="file" id="video-file-input" accept="video/*" class="hidden" onchange="sendMediaFile(this, 'video')">
 
@@ -115,6 +120,30 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Register Service Worker for PWA Installation Support
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed: ', err));
+            });
+        }
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('install-btn').style.display = 'block';
+        });
+
+        window.installPWA = async function() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                document.getElementById('install-btn').style.display = 'none';
+            }
+            deferredPrompt = null;
+        }
 
         const firebaseConfig = {
             apiKey: "AIzaSyC8OyQ99giriQ_v0RpBaXoRFcAeM53CufQ",
@@ -157,7 +186,6 @@
             document.getElementById(`btn-${tab}`).className = "text-emerald-400 border-b-2 border-emerald-400 pb-1";
         }
 
-        // Contact Management (Add / Delete)
         window.addNewContactPrompt = function() {
             const newNum = prompt("Enter phone number to add to your contacts:");
             if (!newNum) return;
@@ -179,7 +207,6 @@
             });
         }
 
-        // Load Contacts List
         const contactsRef = ref(db, 'users');
         onValue(contactsRef, snapshot => {
             const listEl = document.getElementById("contacts-list");
@@ -311,7 +338,6 @@
             }
         }
 
-        // --- P2P WEBRTC CALL ENGINE ---
         const pcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
         let peerConnection, localStream;
 
