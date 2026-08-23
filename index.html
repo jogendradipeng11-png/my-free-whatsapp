@@ -339,26 +339,28 @@
             }
         }
 
-        // --- GLOBAL NETWORK P2P ENGINE (STUN + UNIVERSAL RELAY TUNNELING) ---
+        // --- ROBUST STUN/TURN P2P CONNECTION CONFIG ---
         const pcConfig = { 
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'turn:staticauth.openrelay.metered.ca:80', username: 'openrelayproject@gmail.com', credential: 'openrelayprojectsecret' },
-                { urls: 'turn:staticauth.openrelay.metered.ca:443', username: 'openrelayproject@gmail.com', credential: 'openrelayprojectsecret' }
-            ],
-            iceTransportPolicy: 'all'
+                { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject@gmail.com', credential: 'openrelayproject' },
+                { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject@gmail.com', credential: 'openrelayproject' }
+            ]
         };
         let peerConnection, localStream;
 
         async function createPeerConnection(targetCleanPhone, isAudioOnly) {
-            if (peerConnection) { peerConnection.close(); peerConnection = null; }
+            if (peerConnection) { 
+                peerConnection.close(); 
+                peerConnection = null; 
+            }
             peerConnection = new RTCPeerConnection(pcConfig);
 
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ 
                     audio: true, 
-                    video: isAudioOnly ? false : { width: { ideal: 640 }, height: { ideal: 480 } } 
+                    video: isAudioOnly ? false : true 
                 });
                 
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -369,7 +371,7 @@
                     await localVideo.play().catch(e => console.log(e));
                 }
             } catch (err) {
-                alert("Camera or Microphone permission was denied or is busy. Check browser permissions.");
+                alert("Camera or Microphone access was denied or is busy. Check browser permissions.");
                 return false;
             }
 
