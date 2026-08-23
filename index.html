@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free P2P WhatsApp Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden">
+
+    <!-- TOP WHATSAPP TABS -->
+    <div class="bg-gray-900 border-b border-gray-800 flex justify-around text-sm font-medium py-3">
+        <button onclick="switchTab('chats')" id="btn-chats" class="text-emerald-400 border-b-2 border-emerald-400 pb-1">Chats</button>
+        <button onclick="switchTab('status')" id="btn-status" class="text-gray-400 hover:text-white pb-1">Status</button>
+        <button onclick="switchTab('calls')" id="btn-calls" class="text-gray-400 hover:text-white pb-1">Calls</button>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div class="flex flex-1 overflow-hidden max-w-6xl w-full mx-auto bg-gray-900 shadow-2xl">
+        
+        <!-- SIDEBAR -->
+        <div class="w-1/3 border-r border-gray-800 flex flex-col">
+            <div class="p-3 bg-gray-900 flex justify-between items-center border-b border-gray-800">
+                <span id="current-user-phone" class="text-xs text-emerald-400 font-bold">Phone: Not Logged In</span>
+                <button onclick="logout()" class="text-[10px] bg-red-900/50 text-red-300 px-2 py-1 rounded">Switch ID</button>
+            </div>
+
+            <!-- CHATS & CONTACTS VIEW -->
+            <div id="view-chats" class="flex-1 overflow-y-auto divide-y divide-gray-800/50">
+                <div class="p-3 bg-gray-800/30 font-semibold text-xs text-gray-400 uppercase tracking-wider">Registered Global Contacts</div>
+                <div id="contacts-list" class="divide-y divide-gray-800/50">
+                    <!-- Dynamic phone numbers load here -->
+                </div>
+            </div>
+
+            <!-- STATUS TAB VIEW -->
+            <div id="view-status" class="hidden flex-1 p-4 overflow-y-auto">
+                <h3 class="font-semibold text-emerald-400 mb-2">My Status</h3>
+                <div class="bg-gray-800 p-3 rounded-lg text-xs text-gray-300">
+                    <p class="font-bold">Active Status Broadcast:</p>
+                    <p class="text-gray-400 mt-1">Online & ready via free WebRTC network node.</p>
+                </div>
+            </div>
+
+            <!-- CALLS LOG VIEW -->
+            <div id="view-calls" class="hidden flex-1 p-4 overflow-y-auto space-y-3">
+                <h3 class="font-semibold text-emerald-400">Direct Call Log</h3>
+                <p class="text-xs text-gray-400">Select any contact from the "Chats" tab to trigger an instant P2P video/audio call.</p>
+            </div>
+        </div>
+
+        <!-- MAIN CONVERSATION WINDOW -->
+        <div class="w-2/3 flex flex-col bg-[#0b141a]">
+            
+            <!-- Chat Header -->
+            <div class="p-3 bg-gray-900 border-b border-gray-800 flex justify-between items-center">
+                <span id="active-chat-title" class="font-medium text-sm text-white">Select a contact to start chatting</span>
+                <div class="flex space-x-2">
+                    <button onclick="startCall(true)" class="bg-gray-800 hover:bg-gray-700 p-1.5 rounded text-xs text-emerald-400" title="Audio Call">📞</button>
+                    <button onclick="startCall(false)" class="bg-gray-800 hover:bg-gray-700 p-1.5 rounded text-xs text-emerald-400" title="Video Call">🎥</button>
+                </div>
+            </div>
+
+            <!-- Message Feed -->
+            <div id="message-container" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col">
+                <div class="text-center text-gray-500 text-xs my-auto">Messages are end-to-end synced via your free Firebase backend.</div>
+            </div>
+
+            <!-- Video Call Overlay View -->
+            <div id="call-screen" class="hidden absolute inset-0 bg-gray-950/95 z-50 flex flex-col items-center justify-center p-4">
+                <div class="relative w-full max-w-lg bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800 flex flex-col items-center">
+                    <video id="remote-video" autoplay playsinline class="w-full h-72 object-cover bg-gray-900"></video>
+                    <video id="local-video" autoplay playsinline muted class="absolute bottom-4 right-4 w-24 h-32 object-cover rounded border border-white/20 shadow-lg"></video>
+                    <div class="p-4 bg-gray-900 w-full flex justify-center space-x-4">
+                        <button onclick="endCall()" class="bg-red-600 hover:bg-red-500 px-6 py-2 rounded-full text-xs font-bold text-white">End Call</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Footer (Text, Audio, Location) -->
+            <div class="p-3 bg-gray-900 border-t border-gray-800 flex items-center space-x-2">
+                <button onclick="shareLocation()" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-sm" title="Share GPS Location">📍</button>
+                <input type="text" id="message-input" placeholder="Type a message..." 
+                    class="flex-1 bg-gray-800 text-sm text-white px-3 py-2 rounded-lg focus:outline-none border border-gray-700">
+                <button onclick="sendTextMessage()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-medium">Send</button>
+                <button id="record-btn" onclick="toggleVoiceRecording()" class="bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-xs" title="Record Voice Note">🎙️</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- SCRIPT ENGINE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, onChildAdded, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // TODO: PARESE WITH YOUR FREE FIREBASE PROJECT CREDENTIALS
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyC8OyQ99giriQ_v0RpBaXoRFcAeM53CufQ",
+  authDomain: "my-free-whatsapp.firebaseapp.com",
+  projectId: "my-free-whatsapp",
+  storageBucket: "my-free-whatsapp.firebasestorage.app",
+  messagingSenderId: "330905353783",
+  appId: "1:330905353783:web:4238c64b5b664689a209b2",
+  measurementId: "G-QL2ECLS16G"
+};
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Phone Number Authentication Flow
+        let myPhone = localStorage.getItem("whatsapp_phone");
+        if (!myPhone) {
+            myPhone = prompt("Enter your phone number (e.g., +919876543210):");
+            if (!myPhone) myPhone = "+1" + Math.floor(Math.random() * 900000000 + 100000000);
+            localStorage.setItem("whatsapp_phone", myPhone.trim());
+        }
+        document.getElementById("current-user-phone").innerText = "Phone: " + myPhone;
+
+        // Register user presence in global directory
+        const sanitizedMyPhone = myPhone.replace(/[^a-zA-Z0-9]/g, "");
+        set(ref(db, `users/${sanitizedMyPhone}`), { phone: myPhone, online: true });
+
+        let activeChatPhone = null;
+
+        window.logout = function() {
+            localStorage.removeItem("whatsapp_phone");
+            location.reload();
+        }
+
+        window.switchTab = function(tab) {
+            ['chats', 'status', 'calls'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`btn-${t}`).className = "text-gray-400 hover:text-white pb-1";
+            });
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`btn-${tab}`).className = "text-emerald-400 border-b-2 border-emerald-400 pb-1";
+        }
+
+        // Load Global Contacts List automatically
+        const contactsRef = ref(db, 'users');
+        onValue(contactsRef, snapshot => {
+            const listEl = document.getElementById("contacts-list");
+            listEl.innerHTML = "";
+            snapshot.forEach(child => {
+                const user = child.val();
+                if (user.phone !== myPhone) {
+                    const div = document.createElement("div");
+                    div.className = "p-3 hover:bg-gray-800/50 cursor-pointer flex items-center space-x-3 transition";
+                    div.innerHTML = `
+                        <div class="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center font-bold text-white text-xs">📱</div>
+                        <div>
+                            <h4 class="font-medium text-sm text-white">${user.phone}</h4>
+                            <p class="text-[10px] text-emerald-400">Tap to chat & call</p>
+                        </div>
+                    `;
+                    div.onclick = () => selectContact(user.phone);
+                    listEl.appendChild(div);
+                }
+            });
+        });
+
+        function getChatRoomId(phoneA, phoneB) {
+            return [phoneA.replace(/\D/g,''), phoneB.replace(/\D/g,'')].sort().join('_');
+        }
+
+        window.selectContact = function(phone) {
+            activeChatPhone = phone;
+            document.getElementById("active-chat-title").innerText = "Chat with " + phone;
+            document.getElementById("message-container").innerHTML = "";
+            
+            const roomId = getChatRoomId(myPhone, phone);
+            const chatRef = ref(db, `chats/${roomId}/messages`);
+            
+            onChildAdded(chatRef, snapshot => {
+                const data = snapshot.val();
+                const isMe = data.sender === myPhone;
+                const bubble = document.createElement("div");
+                bubble.className = `flex flex-col max-w-xs md:max-w-md p-3 rounded-lg text-sm ${isMe ? 'ml-auto bg-[#005c4b] text-white rounded-br-none' : 'mr-auto bg-[#202c33] text-gray-200 rounded-bl-none'}`;
+                
+                let html = `<span class="text-[10px] font-bold text-emerald-300 mb-1">${data.sender}</span>`;
+                if (data.type === 'audio') {
+                    html += `<audio controls src="${data.content}" class="w-48 h-8"></audio>`;
+                } else {
+                    html += `<p class="break-words">${data.content}</p>`;
+                }
+                bubble.innerHTML = html;
+                const container = document.getElementById("message-container");
+                container.appendChild(bubble);
+                container.scrollTop = container.scrollHeight;
+            });
+        }
+
+        window.sendTextMessage = function() {
+            if (!activeChatPhone) return alert("Please select a contact from the left list first!");
+            const input = document.getElementById("message-input");
+            if (!input.value.trim()) return;
+            const roomId = getChatRoomId(myPhone, activeChatPhone);
+            push(ref(db, `chats/${roomId}/messages`), { sender: myPhone, content: input.value.trim(), type: 'text', timestamp: Date.now() });
+            input.value = "";
+        }
+
+        window.shareLocation = function() {
+            if (!activeChatPhone) return alert("Select a contact first!");
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const link = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                    const roomId = getChatRoomId(myPhone, activeChatPhone);
+                    push(ref(db, `chats/${roomId}/messages`), { sender: myPhone, content: `📍 Live Location: ${link}`, type: 'text', timestamp: Date.now() });
+                }, () => alert("Location permission denied."));
+            }
+        }
+
+        let mediaRecorder, audioChunks = [], isRecording = false;
+        window.toggleVoiceRecording = async function() {
+            if (!activeChatPhone) return alert("Select a contact first!");
+            const btn = document.getElementById("record-btn");
+            if (!isRecording) {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(new Blob(audioChunks, { type: 'audio/webm' }));
+                    reader.onloadend = () => {
+                        const roomId = getChatRoomId(myPhone, activeChatPhone);
+                        push(ref(db, `chats/${roomId}/messages`), { sender: myPhone, content: reader.result, type: 'audio', timestamp: Date.now() });
+                    };
+                };
+                mediaRecorder.start();
+                isRecording = true;
+                btn.classList.add("bg-red-600");
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                btn.classList.remove("bg-red-600");
+            }
+        }
+
+        // WebRTC P2P Call Integration
+        const pcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        let peerConnection, localStream;
+
+        window.startCall = async function(isAudioOnly) {
+            if (!activeChatPhone) return alert("Select a contact to call!");
+            const targetClean = activeChatPhone.replace(/\D/g,'');
+            
+            document.getElementById("call-screen").classList.remove("hidden");
+            peerConnection = new RTCPeerConnection(pcConfig);
+
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: !isAudioOnly });
+            localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+            document.getElementById("local-video").srcObject = localStream;
+
+            peerConnection.ontrack = e => { document.getElementById("remote-video").srcObject = e.streams[0]; };
+            peerConnection.onicecandidate = e => {
+                if (e.candidate) set(ref(db, `calls/${targetClean}/candidates/${Date.now()}`), JSON.parse(JSON.stringify(e.candidate)));
+            };
+
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            set(ref(db, `calls/${targetClean}/offer`), { sender: myPhone, sdp: offer });
+
+            onValue(ref(db, `calls/${sanitizedMyPhone}/answer`), snapshot => {
+                const ans = snapshot.val();
+                if (ans && peerConnection && !peerConnection.currentRemoteDescription) {
+                    peerConnection.setRemoteDescription(new RTCSessionDescription(ans.sdp));
+                }
+            });
+        }
+
+        onValue(ref(db, `calls/${sanitizedMyPhone}/offer`), async snapshot => {
+            const data = snapshot.val();
+            if (!data) return;
+            if (confirm(`Incoming call from ${data.sender}. Accept?`)) {
+                document.getElementById("call-screen").classList.remove("hidden");
+                peerConnection = new RTCPeerConnection(pcConfig);
+
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+                document.getElementById("local-video").srcObject = localStream;
+
+                peerConnection.ontrack = e => { document.getElementById("remote-video").srcObject = e.streams[0]; };
+                peerConnection.onicecandidate = e => {
+                    const senderClean = data.sender.replace(/\D/g,'');
+                    if (e.candidate) set(ref(db, `calls/${senderClean}/candidates/${Date.now()}`), JSON.parse(JSON.stringify(e.candidate)));
+                };
+
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                const senderClean = data.sender.replace(/\D/g,'');
+                set(ref(db, `calls/${senderClean}/answer`), { sdp: answer });
+            }
+        });
+
+        window.endCall = function() {
+            if (peerConnection) peerConnection.close();
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
+            document.getElementById("call-screen").classList.add("hidden");
+        }
+    </script>
+</body>
+</html>
