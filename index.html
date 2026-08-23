@@ -119,6 +119,9 @@
         </div>
     </div>
 
+    <!-- RINGTONE AUDIO SYNTHESIZER (Built-in standard ring chimes) -->
+    <audio id="ringtone-audio" loop src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
     <!-- SCRIPT ENGINE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -158,6 +161,7 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const ringtone = document.getElementById("ringtone-audio");
 
         let myPhone = localStorage.getItem("whatsapp_phone");
         if (!myPhone) {
@@ -335,7 +339,7 @@
             }
         }
 
-        // --- GLOBAL NETWORK P2P ENGINE (ROBUST STUN + MULTI-RELAY TURN) ---
+        // --- GLOBAL NETWORK P2P ENGINE (STUN + TURN RELAYS) ---
         const pcConfig = { 
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -365,6 +369,7 @@
             }
 
             peerConnection.ontrack = event => {
+                ringtone.pause(); // Stop ringing when call connects
                 if (!isAudioOnly) {
                     const remoteVideo = document.getElementById("remote-video");
                     if (event.streams && event.streams[0]) {
@@ -421,17 +426,22 @@
             });
         }
 
+        // Listen for incoming calls & play loud ringing alert tone
         onValue(ref(db, `calls/${sanitizedMyPhone}/offer`), async snapshot => {
             const data = snapshot.val();
             if (!data || peerConnection) return;
             
+            // Play loud ringtone chime on incoming call
+            ringtone.play().catch(err => console.log("Audio autoplay restricted until user interacts with page"));
+
             if (confirm(`Incoming call from ${data.sender}. Accept?`)) {
+                ringtone.pause();
                 document.getElementById("call-screen").classList.remove("hidden");
                 document.getElementById("call-status-label").innerText = "Connecting...";
 
                 activeTargetClean = data.sender.replace(/\D/g,'');
                 const success = await createPeerConnection(activeTargetClean, data.audioOnly);
-                if (!success) return;
+                if (!success) { ringtone.pause(); return; }
 
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
                 const answer = await peerConnection.createAnswer();
@@ -448,10 +458,14 @@
                         peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.log(e));
                     }
                 });
+            } else {
+                ringtone.pause();
+                endCall();
             }
         });
 
         window.endCall = function() {
+            ringtone.pause();
             if (activeTargetClean) {
                 set(ref(db, `calls/${activeTargetClean}/hangup`), { timestamp: Date.now() });
             }
@@ -459,6 +473,7 @@
         }
 
         function forceCloseCallSession() {
+            ringtone.pause();
             if (peerConnection) { peerConnection.close(); peerConnection = null; }
             if (localStream) { localStream.getTracks().forEach(t => t.stop()); }
             document.getElementById("call-screen").classList.add("hidden");
