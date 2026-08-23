@@ -51,7 +51,7 @@
         </div>
 
         <!-- MAIN CONVERSATION WINDOW -->
-        <div class="w-2/3 flex flex-col bg-[#0b141a]">
+        <div class="w-2/3 flex flex-col bg-[#0b141a] relative">
             
             <!-- Chat Header -->
             <div class="p-3 bg-gray-900 border-b border-gray-800 flex justify-between items-center">
@@ -69,11 +69,18 @@
 
             <!-- Video Call Overlay View -->
             <div id="call-screen" class="hidden absolute inset-0 bg-gray-950/95 z-50 flex flex-col items-center justify-center p-4">
-                <div class="relative w-full max-w-lg bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800 flex flex-col items-center">
-                    <video id="remote-video" autoplay playsinline class="w-full h-72 object-cover bg-gray-900"></video>
-                    <video id="local-video" autoplay playsinline muted class="absolute bottom-4 right-4 w-24 h-32 object-cover rounded border border-white/20 shadow-lg"></video>
-                    <div class="p-4 bg-gray-900 w-full flex justify-center space-x-4">
-                        <button onclick="endCall()" class="bg-red-600 hover:bg-red-500 px-6 py-2 rounded-full text-xs font-bold text-white">End Call</button>
+                <div class="relative w-full max-w-2xl h-[450px] bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800 flex flex-col items-center justify-center">
+                    <!-- Remote User Camera View (Full Screen Inside Container) -->
+                    <video id="remote-video" autoplay playsinline class="w-full h-full object-cover bg-gray-900"></video>
+                    <!-- My Local Camera View (Small Floating Preview) -->
+                    <video id="local-video" autoplay playsinline muted class="absolute bottom-4 right-4 w-28 h-36 object-cover rounded-lg border-2 border-emerald-500 shadow-2xl bg-black"></video>
+                    
+                    <div class="absolute bottom-4 left-4">
+                        <span id="call-status-label" class="bg-black/60 text-emerald-400 text-xs px-3 py-1 rounded-full border border-gray-700">Connecting...</span>
+                    </div>
+
+                    <div class="absolute bottom-4 z-10">
+                        <button onclick="endCall()" class="bg-red-600 hover:bg-red-500 px-6 py-2 rounded-full text-xs font-bold text-white shadow-lg">End Call</button>
                     </div>
                 </div>
             </div>
@@ -93,9 +100,8 @@
     <!-- SCRIPT ENGINE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, onChildAdded, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, push, onChildAdded, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Your custom Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyC8OyQ99giriQ_v0RpBaXoRFcAeM53CufQ",
             authDomain: "my-free-whatsapp.firebaseapp.com",
@@ -238,33 +244,51 @@
             }
         }
 
-        // --- ROBUST P2P WEBRTC CALL ENGINE ---
+        // --- P2P WEBRTC DUAL CAMERA ENGINE ---
         const pcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
         let peerConnection, localStream;
+
+        async function createPeerConnection(targetCleanPhone) {
+            peerConnection = new RTCPeerConnection(pcConfig);
+
+            // Get local camera & mic stream and add to connection
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+            
+            // Show my own camera instantly on the small preview box
+            document.getElementById("local-video").srcObject = localStream;
+
+            // Handle incoming remote video stream from the other person
+            peerConnection.ontrack = event => {
+                const remoteVideo = document.getElementById("remote-video");
+                if (remoteVideo.srcObject !== event.streams[0]) {
+                    remoteVideo.srcObject = event.streams[0];
+                    document.getElementById("call-status-label").innerText = "Connected";
+                }
+            };
+
+            // Send network candidates
+            peerConnection.onicecandidate = event => {
+                if (event.candidate) {
+                    push(ref(db, `calls/${targetCleanPhone}/candidates`), JSON.parse(JSON.stringify(event.candidate)));
+                }
+            };
+        }
 
         window.startCall = async function(isAudioOnly) {
             if (!activeChatPhone) return alert("Select a contact to call!");
             const targetClean = activeChatPhone.replace(/\D/g,'');
             
             document.getElementById("call-screen").classList.remove("hidden");
-            peerConnection = new RTCPeerConnection(pcConfig);
+            document.getElementById("call-status-label").innerText = "Calling...";
 
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: !isAudioOnly });
-            localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
-            document.getElementById("local-video").srcObject = localStream;
-
-            peerConnection.ontrack = e => { document.getElementById("remote-video").srcObject = e.streams[0]; };
-            
-            peerConnection.onicecandidate = e => {
-                if (e.candidate) {
-                    push(ref(db, `calls/${targetClean}/candidates`), JSON.parse(JSON.stringify(e.candidate)));
-                }
-            };
+            await createPeerConnection(targetClean);
 
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
             set(ref(db, `calls/${targetClean}/offer`), { sender: myPhone, sdp: offer });
 
+            // Listen for answer
             onValue(ref(db, `calls/${sanitizedMyPhone}/answer`), snapshot => {
                 const ans = snapshot.val();
                 if (ans && peerConnection && !peerConnection.currentRemoteDescription) {
@@ -272,6 +296,7 @@
                 }
             });
 
+            // Listen for remote network candidates
             onChildAdded(ref(db, `calls/${sanitizedMyPhone}/candidates`), snapshot => {
                 const candidate = snapshot.val();
                 if (candidate && peerConnection) {
@@ -280,32 +305,24 @@
             });
         }
 
+        // Listen for incoming calls
         onValue(ref(db, `calls/${sanitizedMyPhone}/offer`), async snapshot => {
             const data = snapshot.val();
             if (!data || peerConnection) return;
             
             if (confirm(`Incoming call from ${data.sender}. Accept?`)) {
                 document.getElementById("call-screen").classList.remove("hidden");
-                peerConnection = new RTCPeerConnection(pcConfig);
+                document.getElementById("call-status-label").innerText = "Connecting...";
 
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-                localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
-                document.getElementById("local-video").srcObject = localStream;
-
-                peerConnection.ontrack = e => { document.getElementById("remote-video").srcObject = e.streams[0]; };
-                
                 const senderClean = data.sender.replace(/\D/g,'');
-                peerConnection.onicecandidate = e => {
-                    if (e.candidate) {
-                        push(ref(db, `calls/${senderClean}/candidates`), JSON.parse(JSON.stringify(e.candidate)));
-                    }
-                };
+                await createPeerConnection(senderClean);
 
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
                 set(ref(db, `calls/${senderClean}/answer`), { sdp: answer });
 
+                // Listen for remote network candidates
                 onChildAdded(ref(db, `calls/${sanitizedMyPhone}/candidates`), snapshot => {
                     const candidate = snapshot.val();
                     if (candidate && peerConnection) {
