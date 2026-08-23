@@ -169,6 +169,7 @@
         set(ref(db, `users/${sanitizedMyPhone}`), { phone: myPhone, online: true });
 
         let activeChatPhone = null;
+        let activeTargetClean = null;
 
         window.logout = function() {
             localStorage.removeItem("whatsapp_phone");
@@ -336,11 +337,12 @@
             }
         }
 
-        // --- ENHANCED P2P WEBRTC VIDEO ENGINE ---
+        // --- GLOBAL NETWORK P2P ENGINE (STUN + FREE OPEN RELAY TURN) ---
         const pcConfig = { 
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
+                { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject@gmail.com', credential: 'openrelayproject' },
+                { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject@gmail.com', credential: 'openrelayproject' }
             ] 
         };
         let peerConnection, localStream;
@@ -387,22 +389,30 @@
 
         window.startCall = async function(isAudioOnly) {
             if (!activeChatPhone) return alert("Select a contact to call!");
-            const targetClean = activeChatPhone.replace(/\D/g,'');
+            activeTargetClean = activeChatPhone.replace(/\D/g,'');
             
             document.getElementById("call-screen").classList.remove("hidden");
             document.getElementById("call-status-label").innerText = "Calling...";
 
-            const success = await createPeerConnection(targetClean);
+            const success = await createPeerConnection(activeTargetClean);
             if (!success) return;
 
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
-            set(ref(db, `calls/${targetClean}/offer`), { sender: myPhone, sdp: offer });
+            set(ref(db, `calls/${activeTargetClean}/offer`), { sender: myPhone, sdp: offer });
 
+            // Listen for answer
             onValue(ref(db, `calls/${sanitizedMyPhone}/answer`), snapshot => {
                 const ans = snapshot.val();
                 if (ans && peerConnection && peerConnection.signalingState !== "stable") {
                     peerConnection.setRemoteDescription(new RTCSessionDescription(ans.sdp)).catch(err => console.log(err));
+                }
+            });
+
+            // Listen for hangup signal from peer
+            onValue(ref(db, `calls/${sanitizedMyPhone}/hangup`), snapshot => {
+                if (snapshot.exists()) {
+                    forceCloseCallSession();
                 }
             });
 
@@ -414,6 +424,7 @@
             });
         }
 
+        // Listen for incoming calls
         onValue(ref(db, `calls/${sanitizedMyPhone}/offer`), async snapshot => {
             const data = snapshot.val();
             if (!data || peerConnection) return;
@@ -422,14 +433,21 @@
                 document.getElementById("call-screen").classList.remove("hidden");
                 document.getElementById("call-status-label").innerText = "Connecting...";
 
-                const senderClean = data.sender.replace(/\D/g,'');
-                const success = await createPeerConnection(senderClean);
+                activeTargetClean = data.sender.replace(/\D/g,'');
+                const success = await createPeerConnection(activeTargetClean);
                 if (!success) return;
 
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
-                set(ref(db, `calls/${senderClean}/answer`), { sdp: answer });
+                set(ref(db, `calls/${activeTargetClean}/answer`), { sdp: answer });
+
+                // Listen for hangup signal from peer
+                onValue(ref(db, `calls/${sanitizedMyPhone}/hangup`), snapshot => {
+                    if (snapshot.exists()) {
+                        forceCloseCallSession();
+                    }
+                });
 
                 onChildAdded(ref(db, `calls/${sanitizedMyPhone}/candidates`), snapshot => {
                     const candidate = snapshot.val();
@@ -441,6 +459,14 @@
         });
 
         window.endCall = function() {
+            if (activeTargetClean) {
+                // Send hangup flag to the other user so their phone drops automatically
+                set(ref(db, `calls/${activeTargetClean}/hangup`), { timestamp: Date.now() });
+            }
+            forceCloseCallSession();
+        }
+
+        function forceCloseCallSession() {
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
@@ -449,9 +475,13 @@
                 localStream.getTracks().forEach(t => t.stop());
             }
             document.getElementById("call-screen").classList.add("hidden");
+            
+            // Clean up Firebase call records
             remove(ref(db, `calls/${sanitizedMyPhone}/offer`));
             remove(ref(db, `calls/${sanitizedMyPhone}/answer`));
-            location.reload();
+            remove(ref(db, `calls/${sanitizedMyPhone}/candidates`));
+            remove(ref(db, `calls/${sanitizedMyPhone}/hangup`));
+            activeTargetClean = null;
         }
     </script>
 </body>
