@@ -70,9 +70,9 @@
             <!-- Video Call Overlay View -->
             <div id="call-screen" class="hidden absolute inset-0 bg-gray-950/95 z-50 flex flex-col items-center justify-center p-4">
                 <div class="relative w-full max-w-2xl h-[450px] bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800 flex flex-col items-center justify-center">
-                    <!-- Remote User Camera View (Full Screen Inside Container) -->
+                    <!-- Remote User Camera View -->
                     <video id="remote-video" autoplay playsinline class="w-full h-full object-cover bg-gray-900"></video>
-                    <!-- My Local Camera View (Small Floating Preview) -->
+                    <!-- My Local Camera View -->
                     <video id="local-video" autoplay playsinline muted class="absolute bottom-4 right-4 w-28 h-36 object-cover rounded-lg border-2 border-emerald-500 shadow-2xl bg-black"></video>
                     
                     <div class="absolute bottom-4 left-4">
@@ -244,35 +244,42 @@
             }
         }
 
-        // --- P2P WEBRTC DUAL CAMERA ENGINE ---
+        // --- P2P WEBRTC VIDEO ENGINE WITH EXPLICIT STREAM TRACK BINDING ---
         const pcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
         let peerConnection, localStream;
 
         async function createPeerConnection(targetCleanPhone) {
+            if (peerConnection) peerConnection.close();
             peerConnection = new RTCPeerConnection(pcConfig);
 
-            // Get local camera & mic stream and add to connection
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-            
-            // Show my own camera instantly on the small preview box
-            document.getElementById("local-video").srcObject = localStream;
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                document.getElementById("local-video").srcObject = localStream;
+            } catch (err) {
+                alert("Camera/Microphone access denied or unavailable.");
+                return false;
+            }
 
-            // Handle incoming remote video stream from the other person
             peerConnection.ontrack = event => {
                 const remoteVideo = document.getElementById("remote-video");
-                if (remoteVideo.srcObject !== event.streams[0]) {
+                if (event.streams && event.streams[0]) {
                     remoteVideo.srcObject = event.streams[0];
-                    document.getElementById("call-status-label").innerText = "Connected";
+                } else {
+                    let inboundStream = new MediaStream();
+                    inboundStream.addTrack(event.track);
+                    remoteVideo.srcObject = inboundStream;
                 }
+                document.getElementById("call-status-label").innerText = "Connected";
             };
 
-            // Send network candidates
             peerConnection.onicecandidate = event => {
                 if (event.candidate) {
                     push(ref(db, `calls/${targetCleanPhone}/candidates`), JSON.parse(JSON.stringify(event.candidate)));
                 }
             };
+
+            return true;
         }
 
         window.startCall = async function(isAudioOnly) {
@@ -282,13 +289,13 @@
             document.getElementById("call-screen").classList.remove("hidden");
             document.getElementById("call-status-label").innerText = "Calling...";
 
-            await createPeerConnection(targetClean);
+            const success = await createPeerConnection(targetClean);
+            if (!success) return;
 
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
             set(ref(db, `calls/${targetClean}/offer`), { sender: myPhone, sdp: offer });
 
-            // Listen for answer
             onValue(ref(db, `calls/${sanitizedMyPhone}/answer`), snapshot => {
                 const ans = snapshot.val();
                 if (ans && peerConnection && !peerConnection.currentRemoteDescription) {
@@ -296,7 +303,6 @@
                 }
             });
 
-            // Listen for remote network candidates
             onChildAdded(ref(db, `calls/${sanitizedMyPhone}/candidates`), snapshot => {
                 const candidate = snapshot.val();
                 if (candidate && peerConnection) {
@@ -315,14 +321,14 @@
                 document.getElementById("call-status-label").innerText = "Connecting...";
 
                 const senderClean = data.sender.replace(/\D/g,'');
-                await createPeerConnection(senderClean);
+                const success = await createPeerConnection(senderClean);
+                if (!success) return;
 
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
                 set(ref(db, `calls/${senderClean}/answer`), { sdp: answer });
 
-                // Listen for remote network candidates
                 onChildAdded(ref(db, `calls/${sanitizedMyPhone}/candidates`), snapshot => {
                     const candidate = snapshot.val();
                     if (candidate && peerConnection) {
@@ -341,6 +347,7 @@
                 localStream.getTracks().forEach(t => t.stop());
             }
             document.getElementById("call-screen").classList.add("hidden");
+            remove(ref(db, `calls/${sanitizedMyPhone}/offer`));
             location.reload();
         }
     </script>
