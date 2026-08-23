@@ -16,7 +16,6 @@
             <button onclick="switchTab('status')" id="btn-status" class="hover:text-white pb-1">Status</button>
             <button onclick="switchTab('calls')" id="btn-calls" class="hover:text-white pb-1">Calls</button>
         </div>
-        <!-- PWA Install Button (Hidden until browser triggers install prompt) -->
         <button id="install-btn" style="display:none;" onclick="installPWA()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-lg animate-pulse">
             📲 Install App
         </button>
@@ -121,7 +120,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Register Service Worker for PWA Installation Support
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed: ', err));
@@ -338,17 +336,28 @@
             }
         }
 
-        const pcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        // --- ENHANCED P2P WEBRTC VIDEO ENGINE ---
+        const pcConfig = { 
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ] 
+        };
         let peerConnection, localStream;
 
         async function createPeerConnection(targetCleanPhone) {
-            if (peerConnection) peerConnection.close();
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
             peerConnection = new RTCPeerConnection(pcConfig);
 
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-                document.getElementById("local-video").srcObject = localStream;
+                const localVideo = document.getElementById("local-video");
+                localVideo.srcObject = localStream;
+                await localVideo.play().catch(e => console.log(e));
             } catch (err) {
                 alert("Camera/Microphone access denied or unavailable.");
                 return false;
@@ -363,6 +372,7 @@
                     inboundStream.addTrack(event.track);
                     remoteVideo.srcObject = inboundStream;
                 }
+                remoteVideo.play().catch(e => console.log(e));
                 document.getElementById("call-status-label").innerText = "Connected";
             };
 
@@ -391,15 +401,15 @@
 
             onValue(ref(db, `calls/${sanitizedMyPhone}/answer`), snapshot => {
                 const ans = snapshot.val();
-                if (ans && peerConnection && !peerConnection.currentRemoteDescription) {
-                    peerConnection.setRemoteDescription(new RTCSessionDescription(ans.sdp));
+                if (ans && peerConnection && peerConnection.signalingState !== "stable") {
+                    peerConnection.setRemoteDescription(new RTCSessionDescription(ans.sdp)).catch(err => console.log(err));
                 }
             });
 
             onChildAdded(ref(db, `calls/${sanitizedMyPhone}/candidates`), snapshot => {
                 const candidate = snapshot.val();
                 if (candidate && peerConnection) {
-                    peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error(e));
+                    peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.log(e));
                 }
             });
         }
@@ -424,7 +434,7 @@
                 onChildAdded(ref(db, `calls/${sanitizedMyPhone}/candidates`), snapshot => {
                     const candidate = snapshot.val();
                     if (candidate && peerConnection) {
-                        peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error(e));
+                        peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.log(e));
                     }
                 });
             }
@@ -440,6 +450,7 @@
             }
             document.getElementById("call-screen").classList.add("hidden");
             remove(ref(db, `calls/${sanitizedMyPhone}/offer`));
+            remove(ref(db, `calls/${sanitizedMyPhone}/answer`));
             location.reload();
         }
     </script>
