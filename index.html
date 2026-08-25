@@ -2,23 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#075e54">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
-  <title>FreeChat P2P - WhatsApp & IMO Real Calling Engine</title>
+  <title>FreeChat P2P - WhatsApp & IMO Clone</title>
 
   <style>
     * { box-sizing: border-box; }
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
       height: 100dvh;
       overflow: hidden;
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
       background: #0b141a;
       color: #e9edef;
     }
@@ -26,11 +28,11 @@
     button { cursor: pointer; border: 0; }
     .hidden { display: none !important; }
 
-    /* Secure Phone Authentication Modal */
+    /* Auth Modal */
     #auth-modal {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.88);
+      background: rgba(0,0,0,0.92);
       z-index: 99999;
       display: flex;
       align-items: center;
@@ -40,56 +42,65 @@
     .auth-card {
       background: #111b21;
       border: 1px solid #2a3942;
-      padding: 24px;
-      border-radius: 12px;
+      padding: 28px;
+      border-radius: 14px;
       width: 100%;
       max-width: 380px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.7);
     }
 
-    /* Contact Picker Selection Modal */
+    /* Contact Picker Modal */
     #contact-picker-modal {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.85);
+      background: rgba(0,0,0,0.9);
       z-index: 99998;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 16px;
     }
     .picker-card {
       background: #111b21;
       border: 1px solid #2a3942;
       padding: 20px;
-      border-radius: 12px;
+      border-radius: 14px;
       width: 100%;
-      max-width: 420px;
-      max-height: 80vh;
+      max-width: 440px;
+      max-height: 85vh;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.7);
     }
     .picker-list {
       flex: 1;
       overflow-y: auto;
       margin: 12px 0;
       border: 1px solid #26343c;
-      border-radius: 6px;
-      padding: 8px;
+      border-radius: 8px;
+      padding: 6px;
       background: #0b141a;
+      max-height: 50vh;
     }
     .picker-item {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 8px;
+      padding: 10px;
       border-bottom: 1px solid #1f2c34;
       cursor: pointer;
       font-size: 13px;
+      border-radius: 6px;
     }
     .picker-item:hover { background: #202c33; }
+    .picker-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #25d366;
+      flex-shrink: 0;
+    }
 
+    /* App Layout */
     .app { display: flex; width: 100%; height: 100%; }
     .side {
       width: 380px;
@@ -104,8 +115,9 @@
       justify-content: space-between;
       align-items: center;
       gap: 6px;
-      padding: 12px;
+      padding: 12px 14px;
       background: #202c33;
+      border-bottom: 1px solid #2a3942;
     }
     .title {
       overflow: hidden;
@@ -114,52 +126,62 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       font-size: 14px;
+      flex: 1;
     }
     .btn {
-      padding: 6px 10px;
-      border-radius: 6px;
+      padding: 7px 11px;
+      border-radius: 7px;
       background: #075e54;
       color: #fff;
       font-size: 12px;
+      font-weight: 600;
+      transition: background 0.15s;
     }
     .btn:hover { background: #0b806f; }
+    .btn-secondary { background: #2a3942; }
+    .btn-secondary:hover { background: #374248; }
+    .btn-danger { background: #552222; color: #ff6b6b; }
+    .btn-danger:hover { background: #772222; }
     .contacts { flex: 1; overflow-y: auto; }
     .contact-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 12px 14px;
-      border-bottom: 1px solid #26343c;
+      border-bottom: 1px solid #1f2c34;
       cursor: pointer;
+      transition: background 0.1s;
     }
     .contact-row:hover { background: #202c33; }
-    .contact-info { display: flex; gap: 10px; align-items: center; flex: 1; min-width: 0; }
+    .contact-info { display: flex; gap: 12px; align-items: center; flex: 1; min-width: 0; }
     .avatar {
       display: grid;
       flex: 0 0 auto;
-      width: 38px;
-      height: 38px;
+      width: 42px;
+      height: 42px;
       place-items: center;
       border-radius: 50%;
       background: #25d366;
       color: #111;
       font-weight: bold;
-      font-size: 13px;
+      font-size: 14px;
     }
-    .contact-actions { display: flex; gap: 6px; }
+    .contact-actions { display: flex; gap: 6px; flex-shrink: 0; }
     .action-icon-btn {
       background: #2a3942;
       color: #25d366;
       border-radius: 50%;
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 14px;
+      border: none;
+      transition: background 0.15s;
     }
     .action-icon-btn:hover { background: #374248; }
-    .delete-btn { color: #f15c6d; }
+    .action-icon-btn.delete-btn { color: #f15c6d; }
 
     .chat {
       display: flex;
@@ -176,50 +198,59 @@
       background-size: 16px 16px;
     }
     .message {
-      max-width: min(78%, 480px);
-      margin: 8px 0;
-      padding: 9px 11px;
-      border-radius: 8px;
+      max-width: min(78%, 520px);
+      margin: 6px 0;
+      padding: 10px 12px;
+      border-radius: 10px;
       background: #202c33;
       word-break: break-word;
+      font-size: 14px;
+      line-height: 1.4;
+      animation: fadeIn 0.2s ease;
     }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     .mine { margin-left: auto; background: #005c4b; }
     .meta {
-      margin-top: 5px;
-      color: #aebac1;
+      margin-top: 4px;
+      color: #8696a0;
       font-size: 10px;
       text-align: right;
     }
     .message img, .message video {
       max-width: 100%;
-      max-height: 300px;
-      margin-top: 7px;
-      border-radius: 7px;
+      max-height: 280px;
+      margin-top: 6px;
+      border-radius: 8px;
+      display: block;
     }
-    .message audio { width: 100%; margin-top: 7px; }
+    .message audio { width: 100%; margin-top: 6px; height: 36px; }
     .inputbar {
       display: flex;
-      gap: 7px;
-      padding: 10px;
+      gap: 6px;
+      padding: 10px 12px;
       background: #202c33;
+      border-top: 1px solid #2a3942;
+      align-items: center;
     }
-    .inputbar input {
+    .inputbar input[type="text"] {
       flex: 1;
       min-width: 0;
-      padding: 11px;
+      padding: 11px 14px;
       border: 0;
-      border-radius: 8px;
+      border-radius: 20px;
       outline: none;
       background: #2a3942;
       color: #fff;
+      font-size: 14px;
     }
+    .inputbar .btn { border-radius: 50%; width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center; }
 
-    /* IMO-Style True Call Screen Overlay */
+    /* Call Screen */
     .call-screen {
       position: fixed;
       inset: 0;
       z-index: 9999;
-      background: #0b141a;
+      background: #000;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -237,9 +268,9 @@
     #localVideo {
       position: absolute;
       right: 16px;
-      bottom: 110px;
+      bottom: 100px;
       width: 110px;
-      height: 160px;
+      height: 150px;
       border: 2px solid #25d366;
       border-radius: 12px;
       background: #000;
@@ -248,45 +279,48 @@
     }
     .call-header-info {
       position: absolute;
-      top: 40px;
+      top: 50px;
       display: flex;
       flex-direction: column;
       align-items: center;
       z-index: 10;
-      text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+      text-shadow: 0 2px 8px rgba(0,0,0,0.9);
     }
     .call-avatar-lg {
-      width: 80px;
-      height: 80px;
+      width: 90px;
+      height: 90px;
       border-radius: 50%;
       background: #25d366;
       color: #111;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
+      font-size: 32px;
       font-weight: bold;
-      margin-bottom: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      margin-bottom: 14px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
     }
     .call-controls {
       position: absolute;
-      bottom: 30px;
+      bottom: 40px;
       display: flex;
-      gap: 24px;
+      gap: 30px;
       z-index: 10;
     }
     .call-btn-round {
-      width: 60px;
-      height: 60px;
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      font-size: 22px;
       color: #fff;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      border: none;
+      transition: transform 0.1s;
     }
+    .call-btn-round:active { transform: scale(0.95); }
     .btn-hangup { background: #d93025; }
     .btn-accept { background: #25d366; }
 
@@ -300,112 +334,124 @@
         display: flex;
       }
     }
+
+    .empty-state {
+      text-align: center;
+      color: #8696a0;
+      padding: 40px 20px;
+      font-size: 13px;
+    }
+    .loader {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #25d366;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
+<base target="_blank">
 </head>
 
 <body>
-  <!-- Secure Phone Verification Modal -->
+  <!-- Auth Modal -->
   <div id="auth-modal" class="hidden">
     <div class="auth-card">
-      <h2 style="color: #25d366; margin-top: 0; font-size: 1.2rem;">🔐 Secure Phone Login</h2>
-      
+      <h2 style="color: #25d366; margin-top: 0; font-size: 1.3rem; text-align: center;">🔐 FreeChat Login</h2>
       <div id="step-phone">
-        <p style="font-size: 13px; color: #aebac1;">Enter your mobile phone number:</p>
-        <input id="input-phone" type="text" placeholder="+966500000000" style="width:100%; padding:10px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:6px; margin-bottom:12px; outline:none;">
-        <button id="btn-send-code" class="btn" style="width:100%; padding:10px;">Send Verification Code</button>
+        <p style="font-size: 13px; color: #aebac1; margin-bottom: 14px;">Enter your mobile number to start:</p>
+        <input id="input-phone" type="tel" placeholder="+966500000000" style="width:100%; padding:12px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:8px; margin-bottom:14px; outline:none; font-size:15px;">
+        <button id="btn-send-code" class="btn" style="width:100%; padding:12px; font-size:14px;">Send Verification Code</button>
       </div>
-
       <div id="step-code" class="hidden">
-        <p style="font-size: 13px; color: #aebac1;">Enter the 6-digit code sent to your phone <br><small style="color:#25d366;">(Check browser console or alert prompt)</small>:</p>
-        <input id="input-code" type="password" placeholder="••••••" maxlength="6" style="width:100%; padding:10px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:6px; margin-bottom:12px; outline:none; text-align:center; font-size:18px; letter-spacing:4px;">
-        <button id="btn-verify-code" class="btn" style="width:100%; padding:10px;">Verify & Continue</button>
+        <p style="font-size: 13px; color: #aebac1; margin-bottom: 6px;">Enter the 6-digit code:</p>
+        <p style="font-size: 11px; color: #8696a0; margin-bottom: 14px;">(Demo mode — code shown in alert)</p>
+        <input id="input-code" type="password" placeholder="••••••" maxlength="6" style="width:100%; padding:12px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:8px; margin-bottom:14px; outline:none; text-align:center; font-size:20px; letter-spacing:6px;">
+        <button id="btn-verify-code" class="btn" style="width:100%; padding:12px; font-size:14px;">Verify & Continue</button>
       </div>
     </div>
   </div>
 
-  <!-- Contact Selector Modal -->
+  <!-- Contact Picker Modal -->
   <div id="contact-picker-modal" class="hidden">
     <div class="picker-card">
-      <h3 style="color: #25d366; margin-top: 0; font-size: 1.1rem;">📥 Select Contacts to Add</h3>
-      <p style="font-size: 12px; color: #aebac1; margin-top:0;">Check contacts from your phone/Gmail address book or add manually:</p>
-      
-      <div id="pickerListContainer" class="picker-list">
-        <p style="text-align:center; color:#aebac1; font-size:12px; padding:20px;">Loading address book...</p>
-      </div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <button id="pickerManualBtn" class="btn" style="background:#1f2c34; color:#25d366;">+ Manual Add</button>
+      <h3 style="color: #25d366; margin-top: 0; font-size: 1.1rem;">📥 Import Contacts</h3>
+      <p style="font-size: 12px; color: #aebac1; margin-top:0;">Select contacts from your device or add manually:</p>
+      <div id="pickerListContainer" class="picker-list"></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <button id="pickerManualBtn" class="btn btn-secondary" style="font-size:12px;">➕ Manual Add</button>
         <div style="display:flex; gap:8px;">
-          <button id="pickerCancelBtn" class="btn" style="background:#374248;">Cancel</button>
-          <button id="pickerAddBtn" class="btn" style="background:#25d366; color:#111; font-weight:bold;">Add Selected & Invite</button>
+          <button id="pickerCancelBtn" class="btn btn-secondary">Cancel</button>
+          <button id="pickerAddBtn" class="btn" style="background:#25d366; color:#111; font-weight:bold;">Add Selected</button>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Main App -->
   <div class="app">
     <aside class="side">
       <div class="top">
-        <div id="meLabel" class="title">Connecting…</div>
-        <div style="display:flex; gap:4px;">
-          <button class="btn" id="addContactBtn" title="Import Contacts from Phone/Gmail" style="background:#005c4b;">📥 Add</button>
-          <button class="btn" id="logoutBtn" style="background:#552222;" title="Logout">Logout</button>
-          <button class="btn" id="installBtn" style="display: none;">Install</button>
+        <div id="meLabel" class="title"><span class="loader"></span>Loading...</div>
+        <div style="display:flex; gap:5px;">
+          <button class="btn" id="addContactBtn" title="Import Contacts" style="background:#005c4b;">📥 Add</button>
+          <button class="btn btn-danger" id="logoutBtn" title="Logout">Logout</button>
+          <button class="btn" id="installBtn" style="display:none; background:#1e4d3f;">📲 Install</button>
         </div>
       </div>
-      <div id="contactList" class="contacts"></div>
+      <div id="contactList" class="contacts">
+        <div class="empty-state">Sign in to see your contacts</div>
+      </div>
     </aside>
 
     <main id="chatPanel" class="chat">
       <div class="top">
-        <button class="btn" id="backBtn">←</button>
+        <button class="btn btn-secondary" id="backBtn" style="width:auto; padding:7px 12px; border-radius:7px;">← Back</button>
         <div id="chatTitle" class="title">Select a contact</div>
-        <div>
-          <button class="btn" id="audioCallBtn" title="Audio call">📞</button>
-          <button class="btn" id="videoCallBtn" title="Video call">🎥</button>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-secondary" id="audioCallBtn" title="Audio call">📞</button>
+          <button class="btn btn-secondary" id="videoCallBtn" title="Video call">🎥</button>
         </div>
       </div>
 
       <div id="messages" class="messages">
-        <p style="text-align: center; color: #aebac1;">Select a contact from your sidebar to start chatting or calling.</p>
+        <div class="empty-state">Select a contact to start chatting or calling</div>
       </div>
 
       <div class="inputbar">
         <input id="fileInput" type="file" hidden accept="image/*,video/*,audio/*">
-        <button class="btn" id="fileBtn" title="Send media">📎</button>
-        <button class="btn" id="locationBtn" title="Share location">📍</button>
-        <button class="btn" id="recordBtn" title="Voice note">🎙️</button>
+        <button class="btn btn-secondary" id="fileBtn" title="Send media">📎</button>
+        <button class="btn btn-secondary" id="locationBtn" title="Share location">📍</button>
+        <button class="btn btn-secondary" id="recordBtn" title="Voice note">🎙️</button>
         <input id="messageInput" type="text" placeholder="Type a message" autocomplete="off">
-        <button class="btn" id="sendBtn">Send</button>
+        <button class="btn" id="sendBtn" style="background:#005c4b;">➤</button>
       </div>
     </main>
   </div>
 
-  <!-- IMO-Style Live Call Overlay Screen -->
+  <!-- Call Overlay -->
   <section id="callScreen" class="call-screen hidden">
     <video id="remoteVideo" autoplay playsinline></video>
     <audio id="remoteAudio" autoplay playsinline></audio>
     <video id="localVideo" autoplay muted playsinline></video>
 
-    <!-- Caller/Receiver Info header -->
     <div class="call-header-info">
       <div id="callAvatar" class="call-avatar-lg">?</div>
-      <h2 id="callTargetName" style="margin: 0; font-size: 1.4rem; color: #fff;">User</h2>
-      <p id="callStatusLabel" style="margin: 6px 0 0 0; font-size: 0.9rem; color: #25d366; font-weight: bold;">Ringing...</p>
+      <h2 id="callTargetName" style="margin: 0; font-size: 1.5rem; color: #fff;">User</h2>
+      <p id="callStatusLabel" style="margin: 8px 0 0 0; font-size: 1rem; color: #25d366; font-weight: 600;">Calling...</p>
     </div>
 
-    <!-- Call Controls (Accept / Hang Up) -->
     <div class="call-controls">
-      <button id="acceptCallBtn" class="call-btn-round btn-accept hidden" title="Accept Call">📞</button>
-      <button id="endCallBtn" class="call-btn-round btn-hangup" title="End Call">❌</button>
+      <button id="acceptCallBtn" class="call-btn-round btn-accept hidden" title="Accept">📞</button>
+      <button id="endCallBtn" class="call-btn-round btn-hangup" title="End">❌</button>
     </div>
   </section>
 
   <script type="module">
-    window.addEventListener("error", (e) => {
-      console.error("App Error:", e.message || e.reason);
-    });
-
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getDatabase, ref, set, get, push, onValue, onChildAdded, update, remove, query, orderByChild, equalTo, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -425,9 +471,10 @@
     const auth = getAuth(app);
     const db = getDatabase(app);
 
+    // ===== STATE =====
     let me = null;
     let userPhone = localStorage.getItem("freechat_phone") || "";
-    let generatedSecretCode = "";
+    let generatedCode = "";
     let selectedContact = null;
     let fetchedDeviceContacts = [];
 
@@ -438,6 +485,10 @@
     let localStream = null;
     let isCaller = false;
     let isCallAccepted = false;
+    let callAnswerListener = null;
+    let callStatusListener = null;
+    let callerCandidatesListener = null;
+    let calleeCandidatesListener = null;
 
     let recorder = null;
     let recordingChunks = [];
@@ -445,228 +496,266 @@
 
     const $ = (id) => document.getElementById(id);
 
-    function roomId(uidA, uidB) {
-      return [uidA, uidB].sort().join("_");
+    function safeId(str) {
+      return String(str || "").replace(/[^a-zA-Z0-9]/g, "");
     }
 
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js", { scope: "./" }).then(reg => {
-        reg.update();
-      }).catch(() => {});
+    function roomId(a, b) {
+      return [safeId(a), safeId(b)].sort().join("_");
     }
 
-    window.addEventListener("beforeinstallprompt", (event) => {
-      event.preventDefault();
-      deferredPrompt = event;
-      if ($("installBtn")) $("installBtn").style.display = "inline-block";
+    // ===== ERROR HANDLING =====
+    window.addEventListener("error", (e) => {
+      console.error("Global error:", e.error || e.message);
+    });
+    window.addEventListener("unhandledrejection", (e) => {
+      console.error("Unhandled rejection:", e.reason);
     });
 
-    if ($("installBtn")) {
-      $("installBtn").onclick = async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        $("installBtn").style.display = "none";
-      };
+    // ===== SERVICE WORKER =====
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js", { scope: "./" })
+        .then(reg => { console.log("SW registered"); reg.update(); })
+        .catch(err => console.log("SW failed:", err));
     }
 
-    if ($("logoutBtn")) {
-      $("logoutBtn").onclick = () => {
-        localStorage.removeItem("freechat_phone");
-        location.reload();
-      };
-    }
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = $("installBtn");
+      if (btn) btn.style.display = "inline-block";
+    });
 
-    if ($("btn-send-code")) {
-      $("btn-send-code").onclick = () => {
-        const enteredPhone = $("input-phone").value.trim();
-        if (!enteredPhone || enteredPhone.length < 6) {
-          alert("Please enter a valid phone number.");
-          return;
-        }
-        userPhone = enteredPhone;
-        generatedSecretCode = Math.floor(100000 + Math.random() * 900000).toString();
-        alert(`[SMS Simulation] Verification code generated. (Testing code: ${generatedSecretCode})`);
-        $("step-phone").classList.add("hidden");
-        $("step-code").classList.remove("hidden");
-      };
-    }
-
-    if ($("btn-verify-code")) {
-      $("btn-verify-code").onclick = async () => {
-        const code = $("input-code").value.trim();
-        if (code !== generatedSecretCode) {
-          alert("Invalid verification code.");
-          return;
-        }
-        localStorage.setItem("freechat_phone", userPhone);
-        $("auth-modal").classList.add("hidden");
-        await boot();
-      };
-    }
-
-    window.addEventListener("DOMContentLoaded", async () => {
+    // ===== DOM READY =====
+    document.addEventListener("DOMContentLoaded", () => {
       if (!userPhone) {
-        if ($("auth-modal")) $("auth-modal").classList.remove("hidden");
+        showAuth(true);
       } else {
-        if ($("auth-modal")) $("auth-modal").classList.add("hidden");
-        await boot().catch(err => console.error("Boot error:", err));
+        showAuth(false);
+        boot().catch(err => {
+          console.error("Boot failed:", err);
+          alert("Login failed. Please logout and try again.");
+          showAuth(true);
+        });
       }
     });
 
+    function showAuth(show) {
+      const modal = $("auth-modal");
+      if (modal) modal.classList.toggle("hidden", !show);
+    }
+
+    // ===== AUTH FLOW =====
+    $("btn-send-code").onclick = () => {
+      const phone = $("input-phone").value.trim();
+      if (!phone || phone.length < 6) { alert("Enter a valid phone number."); return; }
+      userPhone = phone;
+      generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+      alert(`Demo verification code: ${generatedCode}`);
+      $("step-phone").classList.add("hidden");
+      $("step-code").classList.remove("hidden");
+    };
+
+    $("btn-verify-code").onclick = async () => {
+      const code = $("input-code").value.trim();
+      if (code !== generatedCode) { alert("Wrong code. Try again."); return; }
+      localStorage.setItem("freechat_phone", userPhone);
+      showAuth(false);
+      await boot();
+    };
+
+    $("logoutBtn").onclick = () => {
+      localStorage.removeItem("freechat_phone");
+      location.reload();
+    };
+
+    $("installBtn").onclick = async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      $("installBtn").style.display = "none";
+    };
+
+    // ===== BOOT =====
     async function boot() {
       await signInAnonymously(auth);
       me = auth.currentUser;
-      if ($("meLabel")) $("meLabel").textContent = `${userPhone}`;
+      if (!me) throw new Error("Auth failed");
 
-      const myUserRef = ref(db, `users/${me.uid}`);
-      await set(myUserRef, {
+      $("meLabel").textContent = userPhone;
+
+      const myRef = ref(db, `users/${me.uid}`);
+      await set(myRef, {
         uid: me.uid,
         phone: userPhone,
         online: true,
-        updatedAt: Date.now()
+        lastSeen: Date.now()
       });
+      onDisconnect(myRef).update({ online: false, lastSeen: Date.now() });
 
-      onDisconnect(myUserRef).update({ online: false, updatedAt: Date.now() });
-
-      loadUserContacts();
-      listenForIncomingCallsRealtime();
+      loadContacts();
+      listenIncomingCalls();
     }
 
-    // Load saved contacts securely
-    function loadUserContacts() {
-      onValue(ref(db, `userContacts/${me.uid}`), (snapshot) => {
-        const list = $("contactList");
-        if (!list) return;
-        list.innerHTML = "";
-        const contactsMap = {};
+    // ===== CONTACTS =====
+    function loadContacts() {
+      const list = $("contactList");
+      if (!list) return;
 
-        snapshot.forEach(child => {
-          contactsMap[child.key] = child.val();
+      onValue(ref(db, `userContacts/${me.uid}`), async (snap) => {
+        list.innerHTML = "";
+        const contacts = [];
+        snap.forEach(child => {
+          const c = child.val();
+          c._key = child.key;
+          contacts.push(c);
         });
 
-        const contactKeys = Object.keys(contactsMap);
-        if (contactKeys.length === 0) {
-          list.innerHTML = `<p style="padding:16px;color:#aebac1;font-size:13px;text-align:center;">No contacts added yet.<br>Click <b>📥 Add</b> above to import contacts!</p>`;
+        if (contacts.length === 0) {
+          list.innerHTML = `<div class="empty-state">No contacts yet.<br>Tap <b>📥 Add</b> to import from your phone.</div>`;
           return;
         }
 
-        contactKeys.forEach(key => {
-          const contactData = contactsMap[key];
-          const displayPhone = contactData.phone || contactData.name || "Unknown";
+        // Sort by name/phone
+        contacts.sort((a, b) => (a.name || a.phone || "").localeCompare(b.name || b.phone || ""));
+
+        for (const c of contacts) {
+          const phone = c.phone || c.name || "Unknown";
+          const key = c._key;
+
+          // Check if this contact is registered in the app
+          let isRegistered = false;
+          let registeredUid = c.uid || null;
+          if (!registeredUid) {
+            const usersSnap = await get(ref(db, "users"));
+            usersSnap.forEach(u => {
+              if (u.val().phone === phone) registeredUid = u.val().uid;
+            });
+            if (registeredUid) isRegistered = true;
+          } else {
+            isRegistered = true;
+          }
 
           const row = document.createElement("div");
           row.className = "contact-row";
 
-          const infoDiv = document.createElement("div");
-          infoDiv.className = "contact-info";
-          
-          infoDiv.onclick = () => {
-            openChat({ uid: contactData.uid || key, phone: displayPhone });
+          const info = document.createElement("div");
+          info.className = "contact-info";
+          info.onclick = () => {
+            if (registeredUid) {
+              openChat({ uid: registeredUid, phone });
+            } else {
+              alert("This contact hasn't joined FreeChat yet. Invite them via WhatsApp!");
+            }
           };
 
           const avatar = document.createElement("div");
           avatar.className = "avatar";
-          avatar.textContent = displayPhone.slice(-2);
+          avatar.textContent = phone.slice(-2);
 
           const details = document.createElement("div");
-          const contactName = document.createElement("strong");
-          contactName.textContent = displayPhone;
+          details.style.minWidth = "0";
+          const nameEl = document.createElement("strong");
+          nameEl.textContent = phone;
+          nameEl.style.display = "block";
+          nameEl.style.overflow = "hidden";
+          nameEl.style.textOverflow = "ellipsis";
+          nameEl.style.whiteSpace = "nowrap";
 
-          const status = document.createElement("div");
-          status.style.fontSize = "11px";
-          status.style.color = "#25d366";
-          status.textContent = "Tap to chat";
+          const statusEl = document.createElement("div");
+          statusEl.style.fontSize = "11px";
+          statusEl.style.color = isRegistered ? "#25d366" : "#8696a0";
+          statusEl.textContent = isRegistered ? "On FreeChat • Tap to chat" : "Not on FreeChat • Invite them";
 
-          details.append(contactName, status);
-          infoDiv.append(avatar, details);
+          details.append(nameEl, statusEl);
+          info.append(avatar, details);
 
-          const actionsDiv = document.createElement("div");
-          actionsDiv.className = "contact-actions";
+          const actions = document.createElement("div");
+          actions.className = "contact-actions";
 
-          const audioBtn = document.createElement("button");
-          audioBtn.className = "action-icon-btn";
-          audioBtn.innerHTML = "📞";
-          audioBtn.title = "Audio Call";
-          audioBtn.onclick = (e) => { 
-            e.stopPropagation(); 
-            initiateCall({ uid: contactData.uid || key, phone: displayPhone }, true);
-          };
+          if (isRegistered) {
+            const audioBtn = document.createElement("button");
+            audioBtn.className = "action-icon-btn";
+            audioBtn.innerHTML = "📞";
+            audioBtn.title = "Audio Call";
+            audioBtn.onclick = (e) => { e.stopPropagation(); startCall({ uid: registeredUid, phone }, true); };
 
-          const videoBtn = document.createElement("button");
-          videoBtn.className = "action-icon-btn";
-          videoBtn.innerHTML = "🎥";
-          videoBtn.title = "Video Call";
-          videoBtn.onclick = (e) => { 
-            e.stopPropagation(); 
-            initiateCall({ uid: contactData.uid || key, phone: displayPhone }, false);
-          };
+            const videoBtn = document.createElement("button");
+            videoBtn.className = "action-icon-btn";
+            videoBtn.innerHTML = "🎥";
+            videoBtn.title = "Video Call";
+            videoBtn.onclick = (e) => { e.stopPropagation(); startCall({ uid: registeredUid, phone }, false); };
 
-          const deleteBtn = document.createElement("button");
-          deleteBtn.className = "action-icon-btn delete-btn";
-          deleteBtn.innerHTML = "🗑️";
-          deleteBtn.title = "Delete Contact";
-          deleteBtn.onclick = (e) => { e.stopPropagation(); deleteContact(key); };
+            actions.append(audioBtn, videoBtn);
+          }
 
-          actionsDiv.append(audioBtn, videoBtn, deleteBtn);
-          row.append(infoDiv, actionsDiv);
+          const delBtn = document.createElement("button");
+          delBtn.className = "action-icon-btn delete-btn";
+          delBtn.innerHTML = "🗑️";
+          delBtn.title = "Delete";
+          delBtn.onclick = (e) => { e.stopPropagation(); deleteContact(key); };
+          actions.append(delBtn);
+
+          row.append(info, actions);
           list.appendChild(row);
-        });
+        }
       });
     }
 
-    // Contact Import Flow (API + Fallback Modal)
-    if ($("addContactBtn")) {
-      $("addContactBtn").onclick = async () => {
-        if ('contacts' in navigator && 'select' in navigator.contacts) {
-          try {
-            const props = ['name', 'tel', 'email'];
-            const opts = { multiple: true };
-            fetchedDeviceContacts = await navigator.contacts.select(props, opts);
-            
-            if (!fetchedDeviceContacts || fetchedDeviceContacts.length === 0) {
-              openManualAddPrompt();
-              return;
-            }
+    async function deleteContact(key) {
+      if (!confirm("Delete this contact?")) return;
+      await remove(ref(db, `userContacts/${me.uid}/${key}`));
+    }
+    window.deleteContact = deleteContact;
 
-            renderContactPickerModal(fetchedDeviceContacts);
-          } catch (ex) {
-            openManualAddPrompt();
-          }
-        } else {
-          openManualAddPrompt();
+    // ===== CONTACT IMPORTER =====
+    $("addContactBtn").onclick = async () => {
+      const modal = $("contact-picker-modal");
+      const container = $("pickerListContainer");
+      if (!modal || !container) return;
+
+      container.innerHTML = `<div class="empty-state"><span class="loader"></span>Loading contacts...</div>`;
+      modal.classList.remove("hidden");
+      fetchedDeviceContacts = [];
+
+      if ("contacts" in navigator && "select" in navigator.contacts) {
+        try {
+          const results = await navigator.contacts.select(["name", "tel", "email"], { multiple: true });
+          fetchedDeviceContacts = results || [];
+        } catch (e) {
+          console.log("Contact picker error:", e);
         }
-      };
-    }
+      }
 
-    function openManualAddPrompt() {
-      const phoneInput = prompt("Enter contact phone number (e.g. +966500000000):");
-      if (!phoneInput) return;
-      saveAndInviteContact(phoneInput.trim(), "Contact");
-    }
+      renderPicker();
+    };
 
-    function renderContactPickerModal(contacts) {
+    function renderPicker() {
       const container = $("pickerListContainer");
       container.innerHTML = "";
 
-      contacts.forEach((c, index) => {
-        const name = c.name && c.name.length > 0 ? c.name[0] : "Unnamed";
-        const tel = c.tel && c.tel.length > 0 ? c.tel[0] : "No phone";
+      if (fetchedDeviceContacts.length === 0) {
+        container.innerHTML = `<div class="empty-state">No device contacts found.<br>Use <b>Manual Add</b> below.</div>`;
+        return;
+      }
+
+      fetchedDeviceContacts.forEach((c, idx) => {
+        const name = (c.name && c.name[0]) || "Unnamed";
+        const tel = (c.tel && c.tel[0]) || "";
+        if (!tel) return;
 
         const item = document.createElement("label");
         item.className = "picker-item";
         item.innerHTML = `
-          <input type="checkbox" value="${index}" class="picker-checkbox" style="accent-color: #25d366;">
-          <div style="flex:1; overflow:hidden;">
-            <strong style="display:block; color:#fff;">${name}</strong>
-            <span style="color:#aebac1; font-size:11px;">${tel}</span>
+          <input type="checkbox" value="${idx}" class="picker-cb" style="accent-color:#25d366; width:18px; height:18px;">
+          <div style="flex:1; min-width:0;">
+            <div style="color:#fff; font-weight:600; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${name}</div>
+            <div style="color:#8696a0; font-size:11px;">${tel}</div>
           </div>
         `;
         container.appendChild(item);
       });
-
-      $("contact-picker-modal").classList.remove("hidden");
     }
 
     $("pickerCancelBtn").onclick = () => {
@@ -674,117 +763,108 @@
     };
 
     $("pickerManualBtn").onclick = () => {
+      const phone = prompt("Enter phone number (e.g. +966500000000):");
+      if (!phone) return;
+      const clean = phone.trim();
+      const key = safeId(clean);
+      set(ref(db, `userContacts/${me.uid}/${key}`), {
+        phone: clean,
+        name: clean,
+        addedAt: Date.now()
+      });
+      // WhatsApp invite
+      const msg = encodeURIComponent(`Hey! Join me on FreeChat for free unlimited calls and chat: ${window.location.href}`);
+      window.open(`https://wa.me/${clean}?text=${msg}`, "_blank");
       $("contact-picker-modal").classList.add("hidden");
-      openManualAddPrompt();
     };
 
     $("pickerAddBtn").onclick = async () => {
-      const checkboxes = document.querySelectorAll(".picker-checkbox:checked");
-      if (checkboxes.length === 0) {
-        alert("Please select at least one contact.");
-        return;
+      const checked = document.querySelectorAll(".picker-cb:checked");
+      if (checked.length === 0) { alert("Select at least one contact."); return; }
+
+      for (const cb of checked) {
+        const c = fetchedDeviceContacts[cb.value];
+        const phone = (c.tel && c.tel[0]) ? c.tel[0].replace(/[^0-9+]/g, "") : "";
+        const name = (c.name && c.name[0]) || phone;
+        if (!phone) continue;
+
+        const key = safeId(phone);
+        await set(ref(db, `userContacts/${me.uid}/${key}`), {
+          phone,
+          name,
+          addedAt: Date.now()
+        });
+
+        // Send WhatsApp invite
+        const msg = encodeURIComponent(`Hey ${name}! Join me on FreeChat for free unlimited calls and chat: ${window.location.href}`);
+        window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
       }
 
       $("contact-picker-modal").classList.add("hidden");
-
-      for (const cb of checkboxes) {
-        const c = fetchedDeviceContacts[cb.value];
-        const rawPhone = c.tel && c.tel.length > 0 ? c.tel[0] : null;
-        const contactName = c.name && c.name.length > 0 ? c.name[0] : "Contact";
-        const cleanPhone = rawPhone ? rawPhone.replace(/[^0-9+]/g, "") : "";
-
-        if (cleanPhone) {
-          await saveAndInviteContact(cleanPhone, contactName);
-        }
-      }
-      alert("Selected contacts added successfully!");
+      alert("Contacts added & WhatsApp invites sent!");
     };
 
-    async function saveAndInviteContact(cleanPhone, contactName) {
-      const contactKey = cleanPhone.replace(/[^a-zA-Z0-9]/g, "");
-      
-      // Look up if user exists in database to bind correct UID
-      let foundUid = "";
-      const snap = await get(ref(db, "users"));
-      snap.forEach(child => {
-        if (child.val().phone === cleanPhone) foundUid = child.val().uid;
-      });
-
-      await set(ref(db, `userContacts/${me.uid}/${contactKey}`), {
-        uid: foundUid,
-        phone: cleanPhone,
-        name: contactName,
-        addedAt: Date.now()
-      });
-
-      const inviteText = encodeURIComponent(`Hey ${contactName}! Join me on FreeChat for unlimited free voice and video calls: ` + window.location.href);
-      window.open(`https://wa.me/${cleanPhone}?text=${inviteText}`, '_blank');
-    }
-
-    window.deleteContact = async function(key) {
-      if (confirm("Are you sure you want to delete this contact?")) {
-        await remove(ref(db, `userContacts/${me.uid}/${key}`));
-      }
-    }
-
+    // ===== CHAT =====
     function openChat(contact) {
       selectedContact = contact;
-      if ($("chatTitle")) $("chatTitle").textContent = `Chat with ${contact.phone || "Unknown"}`;
-      if ($("chatPanel")) $("chatPanel").classList.add("mobile-open");
-      if ($("messages")) $("messages").innerHTML = "";
+      $("chatTitle").textContent = contact.phone || "Chat";
+      $("chatPanel").classList.add("mobile-open");
+      $("messages").innerHTML = "";
 
-      unsubscribeMessages?.();
+      if (unsubscribeMessages) unsubscribeMessages();
       unsubscribeMessages = null;
 
       const room = roomId(me.uid, contact.uid);
-      unsubscribeMessages = onChildAdded(ref(db, `chats/${room}/messages`), (snapshot) => {
-        renderMessage(snapshot.val());
+      unsubscribeMessages = onChildAdded(ref(db, `chats/${room}/messages`), (snap) => {
+        renderMsg(snap.val());
       });
     }
 
-    if ($("backBtn")) {
-      $("backBtn").onclick = () => {
-        if ($("chatPanel")) $("chatPanel").classList.remove("mobile-open");
-      };
-    }
+    $("backBtn").onclick = () => {
+      $("chatPanel").classList.remove("mobile-open");
+      selectedContact = null;
+      if (unsubscribeMessages) { unsubscribeMessages(); unsubscribeMessages = null; }
+    };
 
-    function renderMessage(message) {
-      const messagesContainer = $("messages");
-      if (!messagesContainer) return;
-
+    function renderMsg(msg) {
       const box = document.createElement("div");
-      box.className = `message ${message.senderUid === me.uid ? "mine" : ""}`;
+      const isMine = msg.senderUid === me.uid;
+      box.className = `message ${isMine ? "mine" : ""}`;
 
-      if (message.type === "image") {
+      if (msg.type === "image") {
         const img = document.createElement("img");
-        img.src = message.content;
+        img.src = msg.content;
+        img.style.cursor = "pointer";
+        img.onclick = () => window.open(msg.content, "_blank");
         box.appendChild(img);
-      } else if (message.type === "video") {
-        const vid = document.createElement("video");
-        vid.src = message.content;
-        vid.controls = true;
-        box.appendChild(vid);
-      } else if (message.type === "audio") {
-        const aud = document.createElement("audio");
-        aud.src = message.content;
-        aud.controls = true;
-        box.appendChild(aud);
+      } else if (msg.type === "video") {
+        const v = document.createElement("video");
+        v.src = msg.content;
+        v.controls = true;
+        v.playsInline = true;
+        box.appendChild(v);
+      } else if (msg.type === "audio") {
+        const a = document.createElement("audio");
+        a.src = msg.content;
+        a.controls = true;
+        box.appendChild(a);
       } else {
-        const text = document.createElement("div");
-        text.textContent = message.content || "";
-        box.appendChild(text);
+        const t = document.createElement("div");
+        t.textContent = msg.content || "";
+        box.appendChild(t);
       }
 
       const meta = document.createElement("div");
       meta.className = "meta";
-      meta.textContent = new Date(message.timestamp || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+      meta.textContent = time;
       box.appendChild(meta);
 
-      messagesContainer.appendChild(box);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      $("messages").appendChild(box);
+      $("messages").scrollTop = $("messages").scrollHeight;
     }
 
-    async function sendMessage(type, content) {
+    async function sendMsg(type, content) {
       if (!selectedContact) return alert("Select a contact first.");
       const room = roomId(me.uid, selectedContact.uid);
       await push(ref(db, `chats/${room}/messages`), {
@@ -796,142 +876,157 @@
       });
     }
 
-    if ($("sendBtn")) {
-      $("sendBtn").onclick = async () => {
-        const input = $("messageInput");
-        if (!input) return;
-        const text = input.value.trim();
-        if (!text) return;
-        await sendMessage("text", text);
-        input.value = "";
+    $("sendBtn").onclick = async () => {
+      const input = $("messageInput");
+      const text = input.value.trim();
+      if (!text) return;
+      await sendMsg("text", text);
+      input.value = "";
+    };
+
+    $("messageInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); $("sendBtn").click(); }
+    });
+
+    $("fileBtn").onclick = () => {
+      if (!selectedContact) return alert("Select a contact first.");
+      $("fileInput").click();
+    };
+
+    $("fileInput").onchange = (e) => {
+      const file = e.target.files[0];
+      e.target.value = "";
+      if (!file || !selectedContact) return;
+      if (file.size > 2 * 1024 * 1024) return alert("Max file size is 2MB.");
+
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onloadend = async () => {
+        const type = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "audio";
+        await sendMsg(type, reader.result);
       };
-    }
+    };
 
-    if ($("messageInput")) {
-      $("messageInput").addEventListener("keydown", (e) => { 
-        if (e.key === "Enter") { 
-          e.preventDefault(); 
-          if ($("sendBtn")) $("sendBtn").click(); 
-        } 
-      });
-    }
+    $("locationBtn").onclick = () => {
+      if (!selectedContact) return alert("Select a contact first.");
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const url = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+        sendMsg("text", `📍 Location: ${url}`);
+      }, () => alert("Location permission denied."));
+    };
 
-    if ($("fileBtn")) {
-      $("fileBtn").onclick = () => { 
-        if (!selectedContact) return alert("Select a contact first."); 
-        if ($("fileInput")) $("fileInput").click(); 
-      };
-    }
-
-    if ($("fileInput")) {
-      $("fileInput").onchange = (e) => {
-        const file = e.target.files[0];
-        e.target.value = "";
-        if (!file || !selectedContact) return;
-        if (file.size > 2 * 1024 * 1024) return alert("File size limit is 2MB.");
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onloadend = async () => {
-          const type = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "audio";
-          await sendMessage(type, reader.result);
-        };
-      };
-    }
-
-    if ($("locationBtn")) {
-      $("locationBtn").onclick = () => {
-        if (!selectedContact) return alert("Select a contact first.");
-        navigator.geolocation.getCurrentPosition((pos) => {
-          sendMessage("text", `📍 Location: https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`);
-        }, () => alert("Location denied."));
-      };
-    }
-
-    if ($("recordBtn")) {
-      $("recordBtn").onclick = async () => {
-        if (!selectedContact) return alert("Select a contact first.");
-        if (!recorder || recorder.state === "inactive") {
+    $("recordBtn").onclick = async () => {
+      if (!selectedContact) return alert("Select a contact first.");
+      if (!recorder || recorder.state === "inactive") {
+        try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           recordingChunks = [];
           recorder = new MediaRecorder(stream);
-          recorder.ondataavailable = (e) => recordingChunks.push(e.data);
+          recorder.ondataavailable = (e) => { if (e.data.size) recordingChunks.push(e.data); };
           recorder.onstop = async () => {
             stream.getTracks().forEach(t => t.stop());
             const blob = new Blob(recordingChunks, { type: "audio/webm" });
+            if (blob.size > 1 * 1024 * 1024) { alert("Voice note too large."); return; }
             const reader = new FileReader();
             reader.readAsDataURL(blob);
-            reader.onloadend = async () => { await sendMessage("audio", reader.result); };
+            reader.onloadend = async () => await sendMsg("audio", reader.result);
           };
           recorder.start();
           $("recordBtn").textContent = "⏹";
-        } else {
-          recorder.stop();
-          $("recordBtn").textContent = "🎙️";
+          $("recordBtn").style.background = "#d93025";
+        } catch (err) {
+          alert("Microphone access denied.");
         }
-      };
-    }
+      } else {
+        recorder.stop();
+        $("recordBtn").textContent = "🎙️";
+        $("recordBtn").style.background = "";
+      }
+    };
 
-    // --- STABLE WEBRTC CALL ENGINE (NO GHOST HISTORY) ---
-    const rtcConfig = {
+    // ===== WEBRTC CALL ENGINE =====
+    const RTC_CFG = {
       iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" }
       ]
     };
 
-    async function preparePeerConnection(audioOnly) {
-      if (pc) { pc.close(); pc = null; }
-      pc = new RTCPeerConnection(rtcConfig);
+    async function setupPeer(audioOnly) {
+      cleanupPeer();
+      pc = new RTCPeerConnection(RTC_CFG);
 
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: !audioOnly });
-        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-        if (!audioOnly) {
-          if ($("localVideo")) {
-            $("localVideo").srcObject = localStream;
-            $("localVideo").style.display = "block";
-          }
-        } else {
-          if ($("localVideo")) $("localVideo").style.display = "none";
-        }
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+        $("localVideo").srcObject = localStream;
+        $("localVideo").style.display = audioOnly ? "none" : "block";
       } catch (err) {
         alert("Camera/Microphone access denied.");
         return false;
       }
 
-      pc.ontrack = (event) => {
-        const remoteStream = event.streams[0];
-        if (remoteStream) {
-          if ($("remoteAudio")) $("remoteAudio").srcObject = remoteStream;
-          if (!audioOnly && $("remoteVideo")) $("remoteVideo").srcObject = remoteStream;
-          if ($("callStatusLabel")) $("callStatusLabel").textContent = "Connected";
+      pc.ontrack = (e) => {
+        const stream = e.streams[0];
+        if (!stream) return;
+        $("remoteAudio").srcObject = stream;
+        if (!audioOnly) $("remoteVideo").srcObject = stream;
+        $("callStatusLabel").textContent = "Connected";
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log("PC state:", pc.connectionState);
+        if (pc.connectionState === "failed" || pc.connectionState === "disconnected" || pc.connectionState === "closed") {
+          endCall(false);
         }
       };
 
       return true;
     }
 
-    async function initiateCall(contact, audioOnly) {
-      if (activeCallId) return alert("Call already active.");
+    function cleanupPeer() {
+      if (pc) {
+        try { pc.close(); } catch (e) {}
+        pc = null;
+      }
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+      $("remoteVideo").srcObject = null;
+      $("remoteAudio").srcObject = null;
+      $("localVideo").srcObject = null;
+    }
+
+    function cleanupCallListeners() {
+      if (callAnswerListener) { callAnswerListener(); callAnswerListener = null; }
+      if (callStatusListener) { callStatusListener(); callStatusListener = null; }
+      if (callerCandidatesListener) { callerCandidatesListener(); callerCandidatesListener = null; }
+      if (calleeCandidatesListener) { calleeCandidatesListener(); calleeCandidatesListener = null; }
+    }
+
+    // OUTGOING CALL
+    async function startCall(contact, audioOnly) {
+      if (activeCallId) return alert("A call is already active.");
       selectedContact = contact;
       isCaller = true;
       isCallAccepted = false;
       activeCallId = crypto.randomUUID();
 
-      if ($("callTargetName")) $("callTargetName").textContent = contact.phone;
-      if ($("callAvatar")) $("callAvatar").textContent = contact.phone.slice(-2);
-      if ($("callStatusLabel")) $("callStatusLabel").textContent = "Calling...";
-      if ($("acceptCallBtn")) $("acceptCallBtn").classList.add("hidden");
-      if ($("callScreen")) $("callScreen").classList.remove("hidden");
+      $("callTargetName").textContent = contact.phone || "User";
+      $("callAvatar").textContent = (contact.phone || "?").slice(-2);
+      $("callStatusLabel").textContent = "Calling...";
+      $("acceptCallBtn").classList.add("hidden");
+      $("callScreen").classList.remove("hidden");
 
-      const success = await preparePeerConnection(audioOnly);
-      if (!success) { closeCallSession(); return; }
+      const ok = await setupPeer(audioOnly);
+      if (!ok) { endCall(true); return; }
 
       activeCallRef = ref(db, `calls/${activeCallId}`);
-      
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          push(ref(db, `calls/${activeCallId}/callerCandidates`), event.candidate.toJSON());
+
+      pc.onicecandidate = (e) => {
+        if (e.candidate) {
+          push(ref(db, `calls/${activeCallId}/callerCandidates`), e.candidate.toJSON());
         }
       };
 
@@ -943,138 +1038,145 @@
         callerUid: me.uid,
         callerPhone: userPhone,
         calleeUid: contact.uid,
-        audioOnly: audioOnly,
+        audioOnly,
         status: "ringing",
         offer: { type: offer.type, sdp: offer.sdp },
         createdAt: Date.now()
       });
 
-      onValue(ref(db, `calls/${activeCallId}/answer`), async (snapshot) => {
-        const answer = snapshot.val();
-        if (answer && !pc.currentRemoteDescription && !isCallAccepted) {
+      // Listen for answer
+      callAnswerListener = onValue(ref(db, `calls/${activeCallId}/answer`), async (snap) => {
+        const ans = snap.val();
+        if (ans && !isCallAccepted && pc && !pc.currentRemoteDescription) {
           isCallAccepted = true;
-          await pc.setRemoteDescription(new RTCSessionDescription(answer));
-          if ($("callStatusLabel")) $("callStatusLabel").textContent = "Connecting...";
+          await pc.setRemoteDescription(new RTCSessionDescription(ans));
+          $("callStatusLabel").textContent = "Connecting...";
         }
       });
 
-      onChildAdded(ref(db, `calls/${activeCallId}/calleeCandidates`), async (snapshot) => {
-        const candidate = snapshot.val();
-        if (candidate && pc) {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+      // Listen for callee ICE
+      calleeCandidatesListener = onChildAdded(ref(db, `calls/${activeCallId}/calleeCandidates`), async (snap) => {
+        const cand = snap.val();
+        if (cand && pc && pc.remoteDescription) {
+          await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
         }
       });
 
-      onValue(ref(db, `calls/${activeCallId}/status`), (snapshot) => {
-        const st = snapshot.val();
+      // Listen for hangup/reject
+      callStatusListener = onValue(ref(db, `calls/${activeCallId}/status`), (snap) => {
+        const st = snap.val();
         if (st === "ended" || st === "rejected") {
-          closeCallSession();
+          $("callStatusLabel").textContent = st === "rejected" ? "Call rejected" : "Call ended";
+          setTimeout(() => endCall(false), 1500);
         }
       });
     }
 
-    function listenForIncomingCallsRealtime() {
-      const incomingQuery = query(ref(db, "calls"), orderByChild("calleeUid"), equalTo(me.uid));
-      
-      onValue(incomingQuery, (snapshot) => {
-        snapshot.forEach((child) => {
-          const callData = child.val();
-          // Strict check: Only ring if status is actively ringing and created within the last 30 seconds (prevents old history triggers)
-          const isFreshCall = callData && callData.status === "ringing" && (Date.now() - (callData.createdAt || 0) < 30000);
+    $("audioCallBtn").onclick = () => {
+      if (selectedContact) startCall(selectedContact, true);
+      else alert("Select a contact first.");
+    };
+    $("videoCallBtn").onclick = () => {
+      if (selectedContact) startCall(selectedContact, false);
+      else alert("Select a contact first.");
+    };
 
-          if (isFreshCall && !activeCallId) {
-            activeCallId = callData.callId;
-            activeCallRef = ref(db, `calls/${activeCallId}`);
-            isCaller = false;
+    // INCOMING CALLS
+    function listenIncomingCalls() {
+      const q = query(ref(db, "calls"), orderByChild("calleeUid"), equalTo(me.uid));
+      onValue(q, (snap) => {
+        snap.forEach((child) => {
+          const data = child.val();
+          const callId = child.key;
 
-            if ($("callTargetName")) $("callTargetName").textContent = callData.callerPhone;
-            if ($("callAvatar")) $("callAvatar").textContent = callData.callerPhone.slice(-2);
-            if ($("callStatusLabel")) $("callStatusLabel").textContent = `Incoming ${callData.audioOnly ? "Audio" : "Video"} Call...`;
-            if ($("acceptCallBtn")) $("acceptCallBtn").classList.remove("hidden");
-            if ($("callScreen")) $("callScreen").classList.remove("hidden");
-
-            if ($("acceptCallBtn")) {
-              $("acceptCallBtn").onclick = async () => {
-                $("acceptCallBtn").classList.add("hidden");
-                if ($("callStatusLabel")) $("callStatusLabel").textContent = "Connecting...";
-
-                const success = await preparePeerConnection(callData.audioOnly);
-                if (!success) {
-                  await update(activeCallRef, { status: "rejected" });
-                  closeCallSession();
-                  return;
-                }
-
-                pc.onicecandidate = (event) => {
-                  if (event.candidate) {
-                    push(ref(db, `calls/${activeCallId}/calleeCandidates`), event.candidate.toJSON());
-                  }
-                };
-
-                await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-
-                await update(activeCallRef, {
-                  answer: { type: answer.type, sdp: answer.sdp },
-                  status: "accepted"
-                });
-
-                onChildAdded(ref(db, `calls/${activeCallId}/callerCandidates`), async (snapshot) => {
-                  const candidate = snapshot.val();
-                  if (candidate && pc) {
-                    await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
-                  }
-                });
-
-                onValue(ref(db, `calls/${activeCallId}/status`), (snap) => {
-                  if (snap.val() === "ended") closeCallSession();
-                });
-              };
-            }
+          // STRICT filters to prevent ghost calls
+          if (!data || data.status !== "ringing") return;
+          if (activeCallId) return; // already busy
+          if (data.callerUid === me.uid) return; // ignore self
+          if (Date.now() - (data.createdAt || 0) > 30000) {
+            // Stale call >30s, clean it
+            remove(ref(db, `calls/${callId}`)).catch(() => {});
+            return;
           }
+
+          activeCallId = callId;
+          activeCallRef = ref(db, `calls/${callId}`);
+          isCaller = false;
+
+          $("callTargetName").textContent = data.callerPhone || "Unknown";
+          $("callAvatar").textContent = (data.callerPhone || "?").slice(-2);
+          $("callStatusLabel").textContent = `Incoming ${data.audioOnly ? "Audio" : "Video"} Call`;
+          $("acceptCallBtn").classList.remove("hidden");
+          $("callScreen").classList.remove("hidden");
+
+          $("acceptCallBtn").onclick = async () => {
+            $("acceptCallBtn").classList.add("hidden");
+            $("callStatusLabel").textContent = "Connecting...";
+
+            const ok = await setupPeer(data.audioOnly);
+            if (!ok) {
+              await update(activeCallRef, { status: "rejected" });
+              endCall(false);
+              return;
+            }
+
+            pc.onicecandidate = (e) => {
+              if (e.candidate) {
+                push(ref(db, `calls/${callId}/callerCandidates`), e.candidate.toJSON());
+              }
+            };
+
+            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            await update(activeCallRef, {
+              answer: { type: answer.type, sdp: answer.sdp },
+              status: "accepted"
+            });
+
+            // Listen for caller ICE
+            callerCandidatesListener = onChildAdded(ref(db, `calls/${callId}/callerCandidates`), async (snap) => {
+              const cand = snap.val();
+              if (cand && pc && pc.remoteDescription) {
+                await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+              }
+            });
+
+            // Listen for hangup
+            callStatusListener = onValue(ref(db, `calls/${callId}/status`), (s) => {
+              if (s.val() === "ended") endCall(false);
+            });
+          };
         });
       });
     }
 
-    if ($("audioCallBtn")) {
-      $("audioCallBtn").onclick = () => { 
-        if (selectedContact) initiateCall(selectedContact, true); 
-        else alert("Select a contact first."); 
-      };
-    }
+    // END CALL
+    $("endCallBtn").onclick = () => endCall(true);
 
-    if ($("videoCallBtn")) {
-      $("videoCallBtn").onclick = () => { 
-        if (selectedContact) initiateCall(selectedContact, false); 
-        else alert("Select a contact first."); 
-      };
-    }
+    async function endCall(notify) {
+      if (!activeCallId) return;
 
-    if ($("endCallBtn")) {
-      $("endCallBtn").onclick = async () => {
-        if (activeCallRef) {
-          await update(activeCallRef, { status: "ended" }).catch(() => {});
-        }
-        closeCallSession();
-      };
-    }
-
-    function closeCallSession() {
-      if (pc) { pc.close(); pc = null; }
-      if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-
-      if ($("remoteVideo")) $("remoteVideo").srcObject = null;
-      if ($("remoteAudio")) $("remoteAudio").srcObject = null;
-      if ($("localVideo")) $("localVideo").srcObject = null;
-      if ($("callScreen")) $("callScreen").classList.add("hidden");
-      if ($("acceptCallBtn")) $("acceptCallBtn").classList.add("hidden");
-
-      if (activeCallId) {
-        remove(ref(db, `calls/${activeCallId}`)).catch(() => {});
+      if (notify && activeCallRef) {
+        await update(activeCallRef, { status: "ended" }).catch(() => {});
       }
+
+      cleanupCallListeners();
+      cleanupPeer();
+
+      $("callScreen").classList.add("hidden");
+      $("acceptCallBtn").classList.add("hidden");
+
+      // Clean DB after delay
+      const cid = activeCallId;
+      setTimeout(() => {
+        remove(ref(db, `calls/${cid}`)).catch(() => {});
+      }, 4000);
+
       activeCallId = null;
       activeCallRef = null;
+      isCallAccepted = false;
     }
   </script>
 </body>
