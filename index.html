@@ -327,15 +327,18 @@
   <div id="contact-picker-modal" class="hidden">
     <div class="picker-card">
       <h3 style="color: #25d366; margin-top: 0; font-size: 1.1rem;">📥 Select Contacts to Add</h3>
-      <p style="font-size: 12px; color: #aebac1; margin-top:0;">Check contacts from your phone/Gmail address book to import and invite:</p>
+      <p style="font-size: 12px; color: #aebac1; margin-top:0;">Check contacts from your phone/Gmail address book or add manually:</p>
       
       <div id="pickerListContainer" class="picker-list">
         <p style="text-align:center; color:#aebac1; font-size:12px; padding:20px;">Loading address book...</p>
       </div>
 
-      <div style="display:flex; justify-content:flex-end; gap:8px;">
-        <button id="pickerCancelBtn" class="btn" style="background:#374248;">Cancel</button>
-        <button id="pickerAddBtn" class="btn" style="background:#25d366; color:#111; font-weight:bold;">Add Selected & Send Invites</button>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <button id="pickerManualBtn" class="btn" style="background:#1f2c34; color:#25d366;">+ Manual Add</button>
+        <div style="display:flex; gap:8px;">
+          <button id="pickerCancelBtn" class="btn" style="background:#374248;">Cancel</button>
+          <button id="pickerAddBtn" class="btn" style="background:#25d366; color:#111; font-weight:bold;">Add Selected & Invite</button>
+        </div>
       </div>
     </div>
   </div>
@@ -400,7 +403,7 @@
 
   <script type="module">
     window.addEventListener("error", (e) => {
-      alert("App Error: " + (e.message || e.reason));
+      console.error("App Error:", e.message || e.reason);
     });
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -484,7 +487,7 @@
         }
         userPhone = enteredPhone;
         generatedSecretCode = Math.floor(100000 + Math.random() * 900000).toString();
-        alert(`[SMS Simulation] Verification code generated. (For testing code: ${generatedSecretCode})`);
+        alert(`[SMS Simulation] Verification code generated. (Testing code: ${generatedSecretCode})`);
         $("step-phone").classList.add("hidden");
         $("step-code").classList.remove("hidden");
       };
@@ -508,7 +511,7 @@
         if ($("auth-modal")) $("auth-modal").classList.remove("hidden");
       } else {
         if ($("auth-modal")) $("auth-modal").classList.add("hidden");
-        await boot().catch(err => alert("Boot error: " + err.message));
+        await boot().catch(err => console.error("Boot error:", err));
       }
     });
 
@@ -531,6 +534,7 @@
       listenForIncomingCallsRealtime();
     }
 
+    // Load saved contacts securely
     function loadUserContacts() {
       onValue(ref(db, `userContacts/${me.uid}`), (snapshot) => {
         const list = $("contactList");
@@ -539,19 +543,18 @@
         const contactsMap = {};
 
         snapshot.forEach(child => {
-          const c = child.val();
-          contactsMap[c.uid || c.phone] = c;
+          contactsMap[child.key] = child.val();
         });
 
         const contactKeys = Object.keys(contactsMap);
         if (contactKeys.length === 0) {
-          list.innerHTML = `<p style="padding:16px;color:#aebac1;font-size:13px;text-align:center;">No imported contacts yet.<br>Click <b>📥 Add</b> above to import from your phone/Gmail!</p>`;
+          list.innerHTML = `<p style="padding:16px;color:#aebac1;font-size:13px;text-align:center;">No contacts added yet.<br>Click <b>📥 Add</b> above to import contacts!</p>`;
           return;
         }
 
         contactKeys.forEach(key => {
           const contactData = contactsMap[key];
-          const displayPhone = contactData.phone || contactData.name || "Unknown contact";
+          const displayPhone = contactData.phone || contactData.name || "Unknown";
 
           const row = document.createElement("div");
           row.className = "contact-row";
@@ -559,19 +562,8 @@
           const infoDiv = document.createElement("div");
           infoDiv.className = "contact-info";
           
-          infoDiv.onclick = async () => {
-            let targetUser = { uid: contactData.uid, phone: displayPhone };
-            if (!targetUser.uid) {
-              const snap = await get(ref(db, "users"));
-              snap.forEach(child => {
-                if (child.val().phone === displayPhone) targetUser.uid = child.val().uid;
-              });
-            }
-            if (targetUser.uid) {
-              openChat(targetUser);
-            } else {
-              alert("This contact has not joined FreeChat yet. Use WhatsApp invite to invite them!");
-            }
+          infoDiv.onclick = () => {
+            openChat({ uid: contactData.uid || key, phone: displayPhone });
           };
 
           const avatar = document.createElement("div");
@@ -584,8 +576,8 @@
 
           const status = document.createElement("div");
           status.style.fontSize = "11px";
-          status.style.color = "#aebac1";
-          status.textContent = "Imported Contact • Tap to chat";
+          status.style.color = "#25d366";
+          status.textContent = "Tap to chat";
 
           details.append(contactName, status);
           infoDiv.append(avatar, details);
@@ -597,34 +589,18 @@
           audioBtn.className = "action-icon-btn";
           audioBtn.innerHTML = "📞";
           audioBtn.title = "Audio Call";
-          audioBtn.onclick = async (e) => { 
+          audioBtn.onclick = (e) => { 
             e.stopPropagation(); 
-            let targetUser = { uid: contactData.uid, phone: displayPhone };
-            if (!targetUser.uid) {
-              const snap = await get(ref(db, "users"));
-              snap.forEach(child => {
-                if (child.val().phone === displayPhone) targetUser.uid = child.val().uid;
-              });
-            }
-            if (targetUser.uid) initiateCall(targetUser, true);
-            else alert("Contact is not registered on FreeChat yet.");
+            initiateCall({ uid: contactData.uid || key, phone: displayPhone }, true);
           };
 
           const videoBtn = document.createElement("button");
           videoBtn.className = "action-icon-btn";
           videoBtn.innerHTML = "🎥";
           videoBtn.title = "Video Call";
-          videoBtn.onclick = async (e) => { 
+          videoBtn.onclick = (e) => { 
             e.stopPropagation(); 
-            let targetUser = { uid: contactData.uid, phone: displayPhone };
-            if (!targetUser.uid) {
-              const snap = await get(ref(db, "users"));
-              snap.forEach(child => {
-                if (child.val().phone === displayPhone) targetUser.uid = child.val().uid;
-              });
-            }
-            if (targetUser.uid) initiateCall(targetUser, false);
-            else alert("Contact is not registered on FreeChat yet.");
+            initiateCall({ uid: contactData.uid || key, phone: displayPhone }, false);
           };
 
           const deleteBtn = document.createElement("button");
@@ -640,7 +616,7 @@
       });
     }
 
-    // Trigger Contact Picker Modal and load address book
+    // Contact Import Flow (API + Fallback Modal)
     if ($("addContactBtn")) {
       $("addContactBtn").onclick = async () => {
         if ('contacts' in navigator && 'select' in navigator.contacts) {
@@ -650,18 +626,24 @@
             fetchedDeviceContacts = await navigator.contacts.select(props, opts);
             
             if (!fetchedDeviceContacts || fetchedDeviceContacts.length === 0) {
-              alert("No contacts found in address book.");
+              openManualAddPrompt();
               return;
             }
 
             renderContactPickerModal(fetchedDeviceContacts);
           } catch (ex) {
-            fallbackManualAdd();
+            openManualAddPrompt();
           }
         } else {
-          fallbackManualAdd();
+          openManualAddPrompt();
         }
       };
+    }
+
+    function openManualAddPrompt() {
+      const phoneInput = prompt("Enter contact phone number (e.g. +966500000000):");
+      if (!phoneInput) return;
+      saveAndInviteContact(phoneInput.trim(), "Contact");
     }
 
     function renderContactPickerModal(contacts) {
@@ -691,6 +673,11 @@
       $("contact-picker-modal").classList.add("hidden");
     };
 
+    $("pickerManualBtn").onclick = () => {
+      $("contact-picker-modal").classList.add("hidden");
+      openManualAddPrompt();
+    };
+
     $("pickerAddBtn").onclick = async () => {
       const checkboxes = document.querySelectorAll(".picker-checkbox:checked");
       if (checkboxes.length === 0) {
@@ -707,34 +694,30 @@
         const cleanPhone = rawPhone ? rawPhone.replace(/[^0-9+]/g, "") : "";
 
         if (cleanPhone) {
-          const contactKey = cleanPhone.replace(/[^a-zA-Z0-9]/g, "");
-          await set(ref(db, `userContacts/${me.uid}/${contactKey}`), {
-            phone: cleanPhone,
-            name: contactName,
-            addedAt: Date.now()
-          });
-
-          // Automatically generate and open WhatsApp invite message
-          const inviteText = encodeURIComponent(`Hey ${contactName}! Join me on FreeChat for unlimited free voice and video calls: ` + window.location.href);
-          window.open(`https://wa.me/${cleanPhone}?text=${inviteText}`, '_blank');
+          await saveAndInviteContact(cleanPhone, contactName);
         }
       }
-
-      alert("Selected contacts added and WhatsApp invitation links generated!");
+      alert("Selected contacts added successfully!");
     };
 
-    async function fallbackManualAdd() {
-      const phoneInput = prompt("Enter contact phone number (e.g. +966500000000):");
-      if (!phoneInput) return;
-      const cleanPhone = phoneInput.trim();
+    async function saveAndInviteContact(cleanPhone, contactName) {
       const contactKey = cleanPhone.replace(/[^a-zA-Z0-9]/g, "");
+      
+      // Look up if user exists in database to bind correct UID
+      let foundUid = "";
+      const snap = await get(ref(db, "users"));
+      snap.forEach(child => {
+        if (child.val().phone === cleanPhone) foundUid = child.val().uid;
+      });
 
       await set(ref(db, `userContacts/${me.uid}/${contactKey}`), {
+        uid: foundUid,
         phone: cleanPhone,
+        name: contactName,
         addedAt: Date.now()
       });
 
-      const inviteText = encodeURIComponent("Hey! Join me on FreeChat for unlimited free voice and video calls: " + window.location.href);
+      const inviteText = encodeURIComponent(`Hey ${contactName}! Join me on FreeChat for unlimited free voice and video calls: ` + window.location.href);
       window.open(`https://wa.me/${cleanPhone}?text=${inviteText}`, '_blank');
     }
 
@@ -888,7 +871,7 @@
       };
     }
 
-    // --- PRODUCTION-GRADE WEBRTC IMO CALL ENGINE ---
+    // --- STABLE WEBRTC CALL ENGINE (NO GHOST HISTORY) ---
     const rtcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -996,7 +979,10 @@
       onValue(incomingQuery, (snapshot) => {
         snapshot.forEach((child) => {
           const callData = child.val();
-          if (callData && callData.status === "ringing" && !activeCallId) {
+          // Strict check: Only ring if status is actively ringing and created within the last 30 seconds (prevents old history triggers)
+          const isFreshCall = callData && callData.status === "ringing" && (Date.now() - (callData.createdAt || 0) < 30000);
+
+          if (isFreshCall && !activeCallId) {
             activeCallId = callData.callId;
             activeCallRef = ref(db, `calls/${activeCallId}`);
             isCaller = false;
@@ -1085,7 +1071,7 @@
       if ($("acceptCallBtn")) $("acceptCallBtn").classList.add("hidden");
 
       if (activeCallId) {
-        setTimeout(() => remove(ref(db, `calls/${activeCallId}`)).catch(() => {}), 3000);
+        remove(ref(db, `calls/${activeCallId}`)).catch(() => {});
       }
       activeCallId = null;
       activeCallRef = null;
