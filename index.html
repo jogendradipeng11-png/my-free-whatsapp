@@ -15,7 +15,6 @@
   #authScreen, #appScreen { display: none; flex-direction: column; height: 100%; }
   #authScreen.active, #appScreen.active { display: flex; }
 
-  /* Auth */
   .auth-box {
     background: white; max-width: 400px; width: 90%; margin: auto;
     padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
@@ -37,7 +36,6 @@
     letter-spacing: 8px; font-weight: bold; color: #075e54; margin: 15px 0;
   }
 
-  /* App Header */
   .header {
     background: #075e54; color: white; padding: 12px 16px;
     display: flex; align-items: center; justify-content: space-between;
@@ -50,7 +48,6 @@
     padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
   }
 
-  /* Tabs */
   .tabs {
     display: flex; background: #128c7e; border-bottom: 1px solid #075e54;
   }
@@ -60,7 +57,6 @@
   }
   .tab.active { color: white; border-bottom: 3px solid white; }
 
-  /* Contact List */
   .contact-list { flex: 1; overflow-y: auto; background: white; }
   .contact-item {
     display: flex; align-items: center; padding: 14px 16px;
@@ -75,9 +71,6 @@
   .contact-info { flex: 1; min-width: 0; }
   .contact-name { font-weight: 600; color: #333; font-size: 16px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .contact-status { font-size: 13px; margin-top: 2px; }
-  .status-online { color: #25d366; }
-  .status-offline { color: #999; }
-  .status-invite { color: #ff9800; }
   .contact-actions { display: flex; gap: 6px; align-items: center; }
   .contact-actions button {
     background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px;
@@ -86,12 +79,11 @@
   .btn-video { color: #075e54; }
   .btn-delete { color: #e74c3c; font-size: 16px; }
   .btn-invite {
-    background: #25d366; color: white; border: none; padding: 6px 12px;
+    background: #ff9800; color: white; border: none; padding: 6px 12px;
     border-radius: 16px; font-size: 12px; cursor: pointer; font-weight: 600;
   }
-  .btn-invite:hover { background: #1da851; }
+  .btn-invite:hover { background: #e68900; }
 
-  /* Add Contact */
   .add-contact-bar {
     display: flex; padding: 10px; background: #f0f0f0; gap: 8px;
   }
@@ -103,7 +95,6 @@
     border-radius: 20px; cursor: pointer; font-weight: 600;
   }
 
-  /* Chat Screen */
   #chatScreen {
     display: none; flex-direction: column; height: 100%; position: absolute;
     top: 0; left: 0; right: 0; bottom: 0; background: #e5ddd5; z-index: 100;
@@ -135,7 +126,6 @@
     border-radius: 50%; font-size: 18px; cursor: pointer;
   }
 
-  /* Call Overlay */
   #callOverlay {
     display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: #1a1a2e; z-index: 200; flex-direction: column; align-items: center;
@@ -173,20 +163,18 @@
   .empty-state { text-align: center; padding: 40px; color: #999; }
   .badge {
     display: inline-block; padding: 2px 8px; border-radius: 10px;
-    font-size: 11px; font-weight: 600; margin-left: 6px;
+    font-size: 11px; font-weight: 600;
   }
   .badge-online { background: #25d366; color: white; }
   .badge-offline { background: #ccc; color: #666; }
   .badge-invite { background: #ff9800; color: white; }
 
-  /* Toast notification */
   .toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
     background: #333; color: white; padding: 12px 20px; border-radius: 8px;
     font-size: 14px; z-index: 300; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
-  .toast.show { display: block; animation: fadein 0.3s; }
-  @keyframes fadein { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+  .toast.show { display: block; }
 </style>
 <base target="_blank">
 </head>
@@ -196,8 +184,8 @@
 <div id="authScreen" class="active">
   <div class="auth-box">
     <h1>📱 FreeChat</h1>
-    <p>Enter your phone number to get started</p>
-    <input type="tel" id="phoneInput" placeholder="+966500000001" value="">
+    <p>Enter your phone number with country code</p>
+    <input type="tel" id="phoneInput" placeholder="+917077869585" value="">
     <button id="sendCodeBtn" onclick="sendCode()">Send Verification Code</button>
     <div id="codeBox" style="display:none;">
       <p style="margin-top:15px;font-size:13px;color:#666;">Your verification code:</p>
@@ -223,7 +211,7 @@
   </div>
 
   <div class="add-contact-bar">
-    <input type="tel" id="newContactInput" placeholder="+966500000002">
+    <input type="tel" id="newContactInput" placeholder="+918847810037">
     <button onclick="addContact()">➕ Add</button>
     <button onclick="importContacts()" title="Import from device">📥</button>
   </div>
@@ -269,32 +257,28 @@
   </div>
 </div>
 
-<!-- Toast -->
 <div id="toast" class="toast"></div>
 
-<!-- Audio for ringing -->
 <audio id="ringtone" loop>
   <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE" type="audio/wav">
 </audio>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
 <script>
 // ========================
-// CONFIG - REPLACE WITH YOURS
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// FIREBASE CONFIG - REPLACE THIS
+// ========================
 const firebaseConfig = {
-  apiKey: "AIzaSyC8OyQ99giriQ_v0RpBaXoRFcAeM53CufQ",
-  authDomain: "my-free-whatsapp.firebaseapp.com",
-  databaseURL: "https://my-free-whatsapp-default-rtdb.firebaseio.com",
-  projectId: "my-free-whatsapp",
-  storageBucket: "my-free-whatsapp.firebasestorage.app",
-  messagingSenderId: "330905353783",
-  appId: "1:330905353783:web:4238c64b5b664689a209b2",
-  measurementId: "G-QL2ECLS16G"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -310,13 +294,11 @@ let currentContact = null;
 let currentCallId = null;
 let pc = null;
 let localStream = null;
-let callListener = null;
 let contacts = {};
+let globalUsers = {};
 let activeChatRoom = null;
 let chatListener = null;
-let globalUsersCache = {};
 
-// TURN servers for clear calls through NAT
 const iceServers = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -335,42 +317,35 @@ const iceServers = {
 };
 
 // ========================
-// INIT - AUTO LOGIN CHECK
+// INIT
 // ========================
-if (myPhone) {
-  document.getElementById('phoneInput').value = myPhone;
-}
+if (myPhone) document.getElementById('phoneInput').value = myPhone;
 
-// CRITICAL: Listen for auth state FIRST
 auth.onAuthStateChanged(user => {
   if (user && myPhone) {
-    // Already logged in - auto enter app
     myUid = user.uid;
-    setupApp();
+    enterApp();
   } else {
-    // Show auth screen
     document.getElementById('authScreen').classList.add('active');
     document.getElementById('appScreen').classList.remove('active');
   }
 });
 
-function setupApp() {
+function enterApp() {
   document.getElementById('authScreen').classList.remove('active');
   document.getElementById('appScreen').classList.add('active');
   document.getElementById('myPhoneDisplay').textContent = myPhone;
 
-  // Update online status
-  db.ref('users/' + myUid).update({ phone: myPhone, online: true, lastSeen: Date.now() });
-  db.ref('usersByPhone/' + myPhone).update({ uid: myUid, online: true, lastSeen: Date.now() });
+  db.ref('users/' + myUid).set({ phone: myPhone, online: true, lastSeen: Date.now() });
+  db.ref('usersByPhone/' + myPhone).set({ uid: myUid, online: true, lastSeen: Date.now() });
 
-  // Set offline on disconnect
   db.ref('users/' + myUid + '/online').onDisconnect().set(false);
   db.ref('users/' + myUid + '/lastSeen').onDisconnect().set(Date.now());
   db.ref('usersByPhone/' + myPhone + '/online').onDisconnect().set(false);
 
   loadContacts();
+  listenGlobalUsers();
   listenForCalls();
-  listenGlobalUsers(); // Keep track of who is registered
 }
 
 function sanitizePhone(phone) {
@@ -386,7 +361,7 @@ let currentCode = '';
 function sendCode() {
   const phone = sanitizePhone(document.getElementById('phoneInput').value);
   if (!phone || phone.length < 8) {
-    alert('Enter a valid phone number with country code (e.g. +966500000001)');
+    alert('Enter a valid phone number with country code (e.g. +917077869585)');
     return;
   }
   currentCode = generateCode();
@@ -398,20 +373,15 @@ function sendCode() {
 
 function verifyCode() {
   const entered = document.getElementById('codeInput').value;
-  if (entered !== currentCode) {
-    alert('Wrong code. Try again.');
-    return;
-  }
+  if (entered !== currentCode) { alert('Wrong code. Try again.'); return; }
   const phone = sanitizePhone(document.getElementById('phoneInput').value);
   myPhone = phone;
   localStorage.setItem('freechat_phone', phone);
 
   auth.signInAnonymously().then(cred => {
     myUid = cred.user.uid;
-    setupApp();
-  }).catch(err => {
-    alert('Login failed: ' + err.message);
-  });
+    enterApp();
+  }).catch(err => alert('Login failed: ' + err.message));
 }
 
 function logout() {
@@ -427,12 +397,11 @@ function logout() {
 }
 
 // ========================
-// GLOBAL USERS LISTENER
+// GLOBAL USERS - REALTIME REGISTRY
 // ========================
 function listenGlobalUsers() {
-  // Listen to all registered users to know who is online/offline
   db.ref('usersByPhone').on('value', snap => {
-    globalUsersCache = snap.val() || {};
+    globalUsers = snap.val() || {};
     renderContacts();
   });
 }
@@ -441,8 +410,7 @@ function listenGlobalUsers() {
 // CONTACTS
 // ========================
 function loadContacts() {
-  const ref = db.ref('userContacts/' + myUid);
-  ref.on('value', snap => {
+  db.ref('userContacts/' + myUid).on('value', snap => {
     contacts = snap.val() || {};
     renderContacts();
   });
@@ -451,150 +419,110 @@ function loadContacts() {
 function renderContacts() {
   const list = document.getElementById('contactList');
   list.innerHTML = '';
-  const keys = Object.keys(contacts);
+  const keys = Object.keys(contacts).sort();
+
   if (keys.length === 0) {
     list.innerHTML = '<div class="empty-state">No contacts yet.<br>Add a phone number above.</div>';
     return;
   }
 
-  keys.forEach(key => {
-    const c = contacts[key];
-    const reg = globalUsersCache[key];
+  keys.forEach(phone => {
+    const c = contacts[phone];
+    const reg = globalUsers[phone];
     const isRegistered = !!reg;
-    const isOnline = reg && reg.online;
+    const isOnline = reg && reg.online === true;
 
     const div = document.createElement('div');
     div.className = 'contact-item';
 
-    let statusHtml = '';
-    let actionsHtml = '';
-    let clickAction = '';
-
     if (isRegistered) {
-      statusHtml = `<span class="badge ${isOnline ? 'badge-online' : 'badge-offline'}">${isOnline ? 'ONLINE' : 'OFFLINE'}</span>`;
-      actionsHtml = `
-        <button class="btn-call" onclick="event.stopPropagation();openChat('${key}')" title="Chat">💬</button>
-        <button class="btn-call" onclick="event.stopPropagation();startCall(false, '${key}')" title="Voice Call">📞</button>
-        <button class="btn-video" onclick="event.stopPropagation();startCall(true, '${key}')" title="Video Call">🎥</button>
+      div.innerHTML = `
+        <div class="contact-avatar">${(c.name || phone).charAt(0).toUpperCase()}</div>
+        <div class="contact-info" onclick="openChat('${phone}')">
+          <div class="contact-name">${escapeHtml(c.name || phone)} <span class="badge ${isOnline ? 'badge-online' : 'badge-offline'}">${isOnline ? 'ONLINE' : 'OFFLINE'}</span></div>
+          <div class="contact-status">${phone}</div>
+        </div>
+        <div class="contact-actions">
+          <button class="btn-call" onclick="event.stopPropagation();openChat('${phone}')" title="Chat">💬</button>
+          <button class="btn-call" onclick="event.stopPropagation();startCall(false, '${phone}')" title="Voice Call">📞</button>
+          <button class="btn-video" onclick="event.stopPropagation();startCall(true, '${phone}')" title="Video Call">🎥</button>
+          <button class="btn-delete" onclick="event.stopPropagation();deleteContact('${phone}')" title="Delete">🗑</button>
+        </div>
       `;
-      clickAction = `openChat('${key}')`;
     } else {
-      statusHtml = `<span class="badge badge-invite">NOT ON FREECHAT</span>`;
-      actionsHtml = `<button class="btn-invite" onclick="event.stopPropagation();inviteContact('${key}')">📨 Invite</button>`;
-      clickAction = `inviteContact('${key}')`;
+      div.innerHTML = `
+        <div class="contact-avatar" style="background:#ccc;">${(c.name || phone).charAt(0).toUpperCase()}</div>
+        <div class="contact-info" onclick="inviteContact('${phone}')">
+          <div class="contact-name">${escapeHtml(c.name || phone)} <span class="badge badge-invite">NOT ON FREECHAT</span></div>
+          <div class="contact-status">${phone}</div>
+        </div>
+        <div class="contact-actions">
+          <button class="btn-invite" onclick="event.stopPropagation();inviteContact('${phone}')">📨 Invite</button>
+          <button class="btn-delete" onclick="event.stopPropagation();deleteContact('${phone}')" title="Delete">🗑</button>
+        </div>
+      `;
     }
-
-    div.innerHTML = `
-      <div class="contact-avatar">${(c.name || key).charAt(0).toUpperCase()}</div>
-      <div class="contact-info" onclick="${clickAction}">
-        <div class="contact-name">${escapeHtml(c.name || key)} ${statusHtml}</div>
-        <div class="contact-status">${key}</div>
-      </div>
-      <div class="contact-actions">
-        ${actionsHtml}
-        <button class="btn-delete" onclick="event.stopPropagation();deleteContact('${key}')" title="Delete">🗑</button>
-      </div>
-    `;
     list.appendChild(div);
   });
 }
 
 function addContact() {
   const phone = sanitizePhone(document.getElementById('newContactInput').value);
-  if (!phone || phone === myPhone) {
-    alert('Enter a valid phone number');
-    return;
-  }
-  if (contacts[phone]) {
-    showToast('This number is already in your contacts');
-    return;
-  }
+  if (!phone || phone === myPhone) { alert('Enter a valid phone number'); return; }
+  if (contacts[phone]) { showToast('Already in contacts'); return; }
+
   const name = prompt('Contact name (optional):') || phone;
   db.ref('userContacts/' + myUid + '/' + phone).set({ name: name, added: Date.now() })
     .then(() => {
       document.getElementById('newContactInput').value = '';
-      // Check if registered
-      if (!globalUsersCache[phone]) {
-        // Not registered - ask to invite
-        if (confirm('This number is not on FreeChat yet. Send them an invitation now?')) {
+      if (!globalUsers[phone]) {
+        if (confirm('This number is not on FreeChat yet. Send invitation?')) {
           inviteContact(phone);
         }
       } else {
-        showToast('Contact added! They are on FreeChat — you can call or chat now.');
+        showToast('Contact added! They are on FreeChat.');
       }
     });
 }
 
 function deleteContact(phone) {
-  if (!confirm('Delete ' + phone + ' from contacts?')) return;
+  if (!confirm('Delete ' + phone + '?')) return;
   db.ref('userContacts/' + myUid + '/' + phone).remove();
 }
 
 function inviteContact(phone) {
-  // Try Web Share API first (mobile)
-  const shareText = 'Join me on FreeChat! Chat and call for free: ' + location.href;
+  const text = 'Join me on FreeChat! Chat and call for free: ' + location.href;
   if (navigator.share) {
-    navigator.share({
-      title: 'Join FreeChat',
-      text: shareText,
-    }).catch(() => {});
+    navigator.share({ title: 'Join FreeChat', text: text }).catch(() => {});
   } else {
-    // Fallback to WhatsApp
-    const waUrl = 'https://wa.me/' + phone.replace(/\+/g, '') + '?text=' + encodeURIComponent(shareText);
-    window.open(waUrl, '_blank');
+    window.open('https://wa.me/' + phone.replace(/\+/g, '') + '?text=' + encodeURIComponent(text), '_blank');
   }
 }
 
 async function importContacts() {
   if (!('contacts' in navigator && 'ContactsManager' in window)) {
-    alert('Contact API not supported on this browser. Add manually.');
+    alert('Contact API not supported. Add manually.');
     return;
   }
   try {
-    const props = ['name', 'tel'];
-    const results = await navigator.contacts.select(props, { multiple: true });
-    let addedCount = 0;
-    let inviteCount = 0;
-
+    const results = await navigator.contacts.select(['name', 'tel'], { multiple: true });
+    let added = 0;
     results.forEach(contact => {
-      const phones = contact.tel || [];
-      const names = contact.name || ['Contact'];
-      phones.forEach(p => {
-        const sanitized = sanitizePhone(p);
-        if (sanitized && sanitized !== myPhone && !contacts[sanitized]) {
-          db.ref('userContacts/' + myUid + '/' + sanitized).set({
-            name: names[0],
-            added: Date.now()
-          });
-          addedCount++;
-          if (!globalUsersCache[sanitized]) inviteCount++;
+      (contact.tel || []).forEach(p => {
+        const s = sanitizePhone(p);
+        if (s && s !== myPhone && !contacts[s]) {
+          db.ref('userContacts/' + myUid + '/' + s).set({ name: (contact.name || ['Contact'])[0], added: Date.now() });
+          added++;
         }
       });
     });
-
-    if (addedCount > 0) {
-      showToast(addedCount + ' contacts imported!');
-      if (inviteCount > 0) {
-        setTimeout(() => {
-          if (confirm(inviteCount + ' contact(s) are not on FreeChat yet. Invite them?')) {
-            // Open share sheet for bulk invite
-            const shareText = 'Join me on FreeChat! Chat and call for free: ' + location.href;
-            if (navigator.share) navigator.share({ title: 'Join FreeChat', text: shareText });
-          }
-        }, 500);
-      }
-    } else {
-      showToast('No new contacts to import');
-    }
-  } catch (e) {
-    alert('Could not import: ' + e.message);
-  }
+    showToast(added + ' contacts imported');
+  } catch (e) { alert('Import failed: ' + e.message); }
 }
 
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
-  if (tab === 'contacts') renderContacts();
 }
 
 function showToast(msg) {
@@ -602,6 +530,12 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function escapeHtml(t) {
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
 }
 
 // ========================
@@ -613,7 +547,7 @@ function openChat(phone) {
   activeChatRoom = roomId;
 
   document.getElementById('chatContactName').textContent = contacts[phone]?.name || phone;
-  const reg = globalUsersCache[phone];
+  const reg = globalUsers[phone];
   document.getElementById('chatContactStatus').textContent = reg && reg.online ? 'Online' : 'Offline';
   document.getElementById('chatScreen').classList.add('active');
   document.getElementById('chatMessages').innerHTML = '';
@@ -621,30 +555,18 @@ function openChat(phone) {
   if (chatListener) db.ref('chats/' + roomId).off('child_added', chatListener);
   chatListener = db.ref('chats/' + roomId).on('child_added', snap => {
     const msg = snap.val();
-    renderMsg(msg);
+    const div = document.createElement('div');
+    div.className = 'msg ' + (msg.from === myPhone ? 'me' : 'them');
+    const time = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    div.innerHTML = `<div>${escapeHtml(msg.text)}</div><div class="msg-time">${time}</div>`;
+    document.getElementById('chatMessages').appendChild(div);
+    document.getElementById('chatMessages').scrollTop = 999999;
   });
-}
-
-function renderMsg(msg) {
-  const div = document.createElement('div');
-  div.className = 'msg ' + (msg.from === myPhone ? 'me' : 'them');
-  const time = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  div.innerHTML = `<div>${escapeHtml(msg.text)}</div><div class="msg-time">${time}</div>`;
-  document.getElementById('chatMessages').appendChild(div);
-  document.getElementById('chatMessages').scrollTop = 999999;
-}
-
-function escapeHtml(t) {
-  const d = document.createElement('div');
-  d.textContent = t;
-  return d.innerHTML;
 }
 
 function closeChat() {
   document.getElementById('chatScreen').classList.remove('active');
-  if (chatListener && activeChatRoom) {
-    db.ref('chats/' + activeChatRoom).off('child_added', chatListener);
-  }
+  if (chatListener && activeChatRoom) db.ref('chats/' + activeChatRoom).off('child_added', chatListener);
   activeChatRoom = null;
   chatListener = null;
 }
@@ -653,26 +575,19 @@ function sendMsg() {
   const input = document.getElementById('msgInput');
   const text = input.value.trim();
   if (!text || !activeChatRoom) return;
-  db.ref('chats/' + activeChatRoom).push({
-    from: myPhone,
-    text: text,
-    ts: Date.now()
-  });
+  db.ref('chats/' + activeChatRoom).push({ from: myPhone, text: text, ts: Date.now() });
   input.value = '';
 }
 
 // ========================
-// CALLS (WebRTC)
+// CALLS
 // ========================
 function listenForCalls() {
   db.ref('calls').on('child_added', snap => {
     const call = snap.val();
     if (!call) return;
     if (call.to === myPhone && call.from !== myPhone && call.status === 'ringing') {
-      if (Date.now() - call.created > 30000) {
-        snap.ref.remove();
-        return;
-      }
+      if (Date.now() - call.created > 30000) { snap.ref.remove(); return; }
       incomingCall(snap.key, call);
     }
   });
@@ -681,16 +596,10 @@ function listenForCalls() {
 async function startCall(video = false, phone = null) {
   const target = phone || currentContact;
   if (!target) return;
-
-  // Check if target is registered
-  if (!globalUsersCache[target]) {
-    alert('This user is not registered on FreeChat yet. Send an invite first.');
-    return;
-  }
+  if (!globalUsers[target]) { alert('Not registered on FreeChat. Invite them first.'); return; }
 
   currentCallId = 'call_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   const callRef = db.ref('calls/' + currentCallId);
-
   pc = new RTCPeerConnection(iceServers);
 
   try {
@@ -698,33 +607,23 @@ async function startCall(video = false, phone = null) {
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: video ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false
     });
-
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
     showCallUI(target, 'Calling...', video);
 
     pc.onicecandidate = e => {
-      if (e.candidate) {
-        callRef.child('candidates/' + myPhone).push(e.candidate.toJSON());
-      }
+      if (e.candidate) callRef.child('candidates/' + myPhone).push(e.candidate.toJSON());
     };
-
     pc.ontrack = e => {
-      const remoteVideo = document.getElementById('remoteVideo');
-      if (e.streams && e.streams[0] && remoteVideo) {
-        remoteVideo.srcObject = e.streams[0];
-      }
+      if (e.streams && e.streams[0]) document.getElementById('remoteVideo').srcObject = e.streams[0];
     };
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
     await callRef.set({
-      from: myPhone,
-      to: target,
-      status: 'ringing',
-      video: video,
-      created: Date.now(),
-      offer: { sdp: offer.sdp, type: offer.type }
+      from: myPhone, to: target, status: 'ringing', video: video,
+      created: Date.now(), offer: { sdp: offer.sdp, type: offer.type }
     });
 
     callRef.on('value', async snap => {
@@ -733,32 +632,21 @@ async function startCall(video = false, phone = null) {
       if (data.status === 'accepted' && data.answer && !pc.currentRemoteDescription) {
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         if (data.candidates && data.candidates[target]) {
-          Object.values(data.candidates[target]).forEach(c => {
-            if (c) pc.addIceCandidate(new RTCIceCandidate(c));
-          });
+          Object.values(data.candidates[target]).forEach(c => { if (c) pc.addIceCandidate(new RTCIceCandidate(c)); });
         }
-        document.getElementById('callStatus').textContent = 'Connected';
       }
-      if (data.status === 'ended') {
-        endCallLocal();
-        snap.ref.remove();
-      }
+      if (data.status === 'ended') { endCallLocal(); snap.ref.remove(); }
     });
 
     setTimeout(() => {
       callRef.once('value').then(s => {
         if (s.val() && s.val().status === 'ringing') {
-          endCallLocal();
-          s.ref.remove();
-          showToast('No answer');
+          endCallLocal(); s.ref.remove(); showToast('No answer');
         }
       });
     }, 30000);
 
-  } catch (err) {
-    alert('Could not start call: ' + err.message);
-    endCallLocal();
-  }
+  } catch (err) { alert('Call failed: ' + err.message); endCallLocal(); }
 }
 
 async function incomingCall(callId, callData) {
@@ -779,7 +667,6 @@ async function incomingCall(callId, callData) {
     ringtone.pause();
     document.getElementById('callIncomingUI').style.display = 'none';
     document.getElementById('callActiveUI').style.display = 'block';
-
     pc = new RTCPeerConnection(iceServers);
 
     try {
@@ -787,47 +674,25 @@ async function incomingCall(callId, callData) {
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: video ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false
       });
-
       localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
       document.getElementById('localVideo').srcObject = video ? localStream : null;
 
-      pc.ontrack = e => {
-        if (e.streams && e.streams[0]) {
-          if (video) document.getElementById('remoteVideo').srcObject = e.streams[0];
-        }
-      };
-
-      pc.onicecandidate = e => {
-        if (e.candidate) {
-          db.ref('calls/' + callId + '/candidates/' + myPhone).push(e.candidate.toJSON());
-        }
-      };
+      pc.ontrack = e => { if (e.streams && e.streams[0] && video) document.getElementById('remoteVideo').srcObject = e.streams[0]; };
+      pc.onicecandidate = e => { if (e.candidate) db.ref('calls/' + callId + '/candidates/' + myPhone).push(e.candidate.toJSON()); };
 
       await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
-      await db.ref('calls/' + callId).update({
-        status: 'accepted',
-        answer: { sdp: answer.sdp, type: answer.type }
-      });
+      await db.ref('calls/' + callId).update({ status: 'accepted', answer: { sdp: answer.sdp, type: answer.type } });
 
       db.ref('calls/' + callId + '/candidates/' + from).on('child_added', snap => {
-        const c = snap.val();
-        if (c) pc.addIceCandidate(new RTCIceCandidate(c));
+        const c = snap.val(); if (c) pc.addIceCandidate(new RTCIceCandidate(c));
       });
-
       db.ref('calls/' + callId).on('value', snap => {
-        if (!snap.val() || snap.val().status === 'ended') {
-          endCallLocal();
-          snap.ref.remove();
-        }
+        if (!snap.val() || snap.val().status === 'ended') { endCallLocal(); snap.ref.remove(); }
       });
-
-    } catch (err) {
-      alert('Could not answer: ' + err.message);
-      declineCall();
-    }
+    } catch (err) { alert('Answer failed: ' + err.message); declineCall(); }
   };
 
   window._pendingDecline = () => {
@@ -837,26 +702,16 @@ async function incomingCall(callId, callData) {
   };
 }
 
-function acceptCall() {
-  if (window._pendingAccept) window._pendingAccept();
-}
-
-function declineCall() {
-  if (window._pendingDecline) window._pendingDecline();
-}
+function acceptCall() { if (window._pendingAccept) window._pendingAccept(); }
+function declineCall() { if (window._pendingDecline) window._pendingDecline(); }
 
 function showCallUI(target, status, video) {
   document.getElementById('callIncomingUI').style.display = 'none';
   document.getElementById('callActiveUI').style.display = 'block';
   document.getElementById('callOverlay').classList.add('active');
   document.getElementById('localVideo').srcObject = video ? localStream : null;
-  if (!video) {
-    document.getElementById('remoteVideo').style.display = 'none';
-    document.getElementById('localVideo').style.display = 'none';
-  } else {
-    document.getElementById('remoteVideo').style.display = 'block';
-    document.getElementById('localVideo').style.display = 'block';
-  }
+  document.getElementById('remoteVideo').style.display = video ? 'block' : 'none';
+  document.getElementById('localVideo').style.display = video ? 'block' : 'none';
 }
 
 function endCall() {
@@ -877,10 +732,7 @@ function endCallLocal() {
   window._pendingDecline = null;
 }
 
-// Service worker
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>
