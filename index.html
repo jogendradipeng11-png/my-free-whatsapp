@@ -174,18 +174,10 @@
     font-size: 14px; z-index: 300; display: none;
   }
   .toast.show { display: block; }
-
-  .debug-bar {
-    background: #ffeb3b; color: #333; padding: 6px 12px; font-size: 12px;
-    text-align: center; display: none;
-  }
-  .debug-bar.show { display: block; }
 </style>
 <base target="_blank">
 </head>
 <body>
-
-<div id="debugBar" class="debug-bar"></div>
 
 <!-- AUTH SCREEN -->
 <div id="authScreen" class="active">
@@ -220,7 +212,7 @@
   <div class="add-contact-bar">
     <input type="tel" id="newContactInput" placeholder="+918847810037">
     <button onclick="addContact()">➕ Add</button>
-    <button onclick="importContacts()" title="Import from device">📥</button>
+    <button onclick="importContacts()" title="Import from device">📥 Import</button>
   </div>
 
   <div class="contact-list" id="contactList"></div>
@@ -295,16 +287,15 @@ const auth = firebase.auth();
 const db = firebase.database();
 
 // ========================
-// GLOBAL STATE
+// GLOBAL STATE - PHONE ONLY
 // ========================
-let myUid = null;
 let myPhone = localStorage.getItem('freechat_phone') || '';
 let currentContact = null;
 let currentCallId = null;
 let pc = null;
 let localStream = null;
 let contacts = {};
-let globalUsers = {};   // phone -> { uid, online, lastSeen }
+let registeredPhones = {};   // phone -> { online, lastSeen }
 let activeChatRoom = null;
 let chatListener = null;
 
@@ -317,22 +308,30 @@ const iceServers = {
   ]
 };
 
-function debug(msg) {
-  console.log('[FreeChat]', msg);
-  const bar = document.getElementById('debugBar');
-  bar.textContent = msg;
-  bar.classList.add('show');
-  setTimeout(() => bar.classList.remove('show'), 5000);
+function sanitizePhone(phone) {
+  return phone.replace(/[^0-9+]/g, '');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function escapeHtml(t) {
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
 }
 
 // ========================
-// INIT
+// INIT - AUTO LOGIN BY PHONE
 // ========================
 if (myPhone) document.getElementById('phoneInput').value = myPhone;
 
 auth.onAuthStateChanged(user => {
   if (user && myPhone) {
-    myUid = user.uid;
     enterApp();
   } else {
     document.getElementById('authScreen').classList.add('active');
@@ -345,29 +344,19 @@ function enterApp() {
   document.getElementById('appScreen').classList.add('active');
   document.getElementById('myPhoneDisplay').textContent = myPhone;
 
-  // Write to BOTH registry locations for redundancy
-  const userData = { phone: myPhone, online: true, lastSeen: Date.now() };
+  // Register this phone number globally
+  const regData = { online: true, lastSeen: Date.now() };
+  db.ref('registeredPhones/' + myPhone).set(regData)
+    .then(() => console.log('Registered phone:', myPhone))
+    .catch(e => console.error('Register failed:', e));
 
-  db.ref('users/' + myUid).set(userData)
-    .then(() => debug('User registry updated'))
-    .catch(e => console.error('users write failed:', e));
+  // Mark offline when disconnecting
+  db.ref('registeredPhones/' + myPhone + '/online').onDisconnect().set(false);
+  db.ref('registeredPhones/' + myPhone + '/lastSeen').onDisconnect().set(Date.now());
 
-  db.ref('usersByPhone/' + myPhone).set({ uid: myUid, online: true, lastSeen: Date.now() })
-    .then(() => debug('Phone registry updated'))
-    .catch(e => console.error('usersByPhone write failed:', e));
-
-  // Disconnect handlers
-  db.ref('users/' + myUid + '/online').onDisconnect().set(false);
-  db.ref('users/' + myUid + '/lastSeen').onDisconnect().set(Date.now());
-  db.ref('usersByPhone/' + myPhone + '/online').onDisconnect().set(false);
-
-  loadContacts();
-  listenGlobalUsers();
+  loadMyContacts();
+  listenRegisteredPhones();
   listenForCalls();
-}
-
-function sanitizePhone(phone) {
-  return phone.replace(/[^0-9+]/g, '');
 }
 
 function generateCode() {
@@ -396,58 +385,39 @@ function verifyCode() {
   myPhone = phone;
   localStorage.setItem('freechat_phone', phone);
 
-  auth.signInAnonymously().then(cred => {
-    myUid = cred.user.uid;
+  auth.signInAnonymously().then(() => {
     enterApp();
   }).catch(err => alert('Login failed: ' + err.message));
 }
 
 function logout() {
-  if (myUid) {
-    db.ref('users/' + myUid + '/online').set(false);
-    db.ref('usersByPhone/' + myPhone + '/online').set(false);
+  if (myPhone) {
+    db.ref('registeredPhones/' + myPhone + '/online').set(false);
   }
   auth.signOut();
   localStorage.removeItem('freechat_phone');
-  myPhone = ''; myUid = null;
+  myPhone = '';
   location.reload();
 }
 
 // ========================
-// GLOBAL USERS REGISTRY (DUAL LISTENER)
+// REGISTERED PHONES LISTENER
 // ========================
-function listenGlobalUsers() {
-  // Primary: listen to usersByPhone
-  db.ref('usersByPhone').on('value', snap => {
-    const byPhone = snap.val() || {};
-    console.log('usersByPhone data:', byPhone);
-    Object.assign(globalUsers, byPhone);
+function listenRegisteredPhones() {
+  db.ref('registeredPhones').on('value', snap => {
+    registeredPhones = snap.val() || {};
+    console.log('Registered phones:', Object.keys(registeredPhones));
     renderContacts();
   }, err => {
-    console.error('usersByPhone listener error:', err);
-  });
-
-  // Fallback: listen to users/{uid} and extract phones
-  db.ref('users').on('value', snap => {
-    const users = snap.val() || {};
-    console.log('users data:', users);
-    Object.values(users).forEach(u => {
-      if (u && u.phone) {
-        globalUsers[u.phone] = { online: u.online, lastSeen: u.lastSeen };
-      }
-    });
-    renderContacts();
-  }, err => {
-    console.error('users listener error:', err);
+    console.error('registeredPhones listener error:', err);
   });
 }
 
 // ========================
-// CONTACTS - STORED BY PHONE NUMBER (not UID!)
+// CONTACTS - PURELY BY PHONE NUMBER
 // ========================
-function loadContacts() {
-  // KEY FIX: store contacts by PHONE NUMBER so any device with same number sees same contacts
-  db.ref('userContacts/' + myPhone).on('value', snap => {
+function loadMyContacts() {
+  db.ref('contacts/' + myPhone).on('value', snap => {
     contacts = snap.val() || {};
     console.log('My contacts:', contacts);
     renderContacts();
@@ -462,18 +432,15 @@ function renderContacts() {
   const keys = Object.keys(contacts).sort();
 
   if (keys.length === 0) {
-    list.innerHTML = '<div class="empty-state">No contacts yet.<br>Add a phone number above.</div>';
+    list.innerHTML = '<div class="empty-state">No contacts yet.<br>Add a phone number above or import from your phone.</div>';
     return;
   }
 
-  let registeredCount = 0;
-
   keys.forEach(phone => {
     const c = contacts[phone];
-    const reg = globalUsers[phone];
+    const reg = registeredPhones[phone];
     const isRegistered = !!reg;
     const isOnline = reg && reg.online === true;
-    if (isRegistered) registeredCount++;
 
     const div = document.createElement('div');
     div.className = 'contact-item';
@@ -507,8 +474,6 @@ function renderContacts() {
     }
     list.appendChild(div);
   });
-
-  console.log('Rendered', keys.length, 'contacts,', registeredCount, 'registered');
 }
 
 function addContact() {
@@ -517,11 +482,10 @@ function addContact() {
   if (contacts[phone]) { showToast('Already in contacts'); return; }
 
   const name = prompt('Contact name (optional):') || phone;
-  // KEY FIX: write to path keyed by MY phone number, not UID
-  db.ref('userContacts/' + myPhone + '/' + phone).set({ name: name, added: Date.now() })
+  db.ref('contacts/' + myPhone + '/' + phone).set({ name: name, added: Date.now() })
     .then(() => {
       document.getElementById('newContactInput').value = '';
-      if (!globalUsers[phone]) {
+      if (!registeredPhones[phone]) {
         if (confirm('This number is not on FreeChat yet. Send invitation?')) {
           inviteContact(phone);
         }
@@ -534,7 +498,7 @@ function addContact() {
 
 function deleteContact(phone) {
   if (!confirm('Delete ' + phone + '?')) return;
-  db.ref('userContacts/' + myPhone + '/' + phone).remove();
+  db.ref('contacts/' + myPhone + '/' + phone).remove();
 }
 
 function inviteContact(phone) {
@@ -547,42 +511,47 @@ function inviteContact(phone) {
 }
 
 async function importContacts() {
-  if (!('contacts' in navigator && 'ContactsManager' in window)) {
-    alert('Contact API not supported. Add manually.');
-    return;
-  }
-  try {
-    const results = await navigator.contacts.select(['name', 'tel'], { multiple: true });
-    let added = 0;
-    results.forEach(contact => {
-      (contact.tel || []).forEach(p => {
-        const s = sanitizePhone(p);
-        if (s && s !== myPhone && !contacts[s]) {
-          db.ref('userContacts/' + myPhone + '/' + s).set({ name: (contact.name || ['Contact'])[0], added: Date.now() });
-          added++;
-        }
+  // Try device contacts API first
+  if ('contacts' in navigator && 'ContactsManager' in window) {
+    try {
+      const results = await navigator.contacts.select(['name', 'tel'], { multiple: true });
+      let added = 0;
+      results.forEach(contact => {
+        (contact.tel || []).forEach(p => {
+          const s = sanitizePhone(p);
+          if (s && s !== myPhone && !contacts[s]) {
+            db.ref('contacts/' + myPhone + '/' + s).set({
+              name: (contact.name || ['Contact'])[0],
+              added: Date.now()
+            });
+            added++;
+          }
+        });
       });
-    });
-    showToast(added + ' contacts imported');
-  } catch (e) { alert('Import failed: ' + e.message); }
+      showToast(added + ' contacts imported from phone');
+      return;
+    } catch (e) {
+      console.log('Device contacts failed:', e);
+    }
+  }
+
+  // Fallback: try to open native contact picker or prompt
+  const phones = prompt('Paste phone numbers separated by commas:');
+  if (!phones) return;
+  let added = 0;
+  phones.split(',').forEach(p => {
+    const s = sanitizePhone(p.trim());
+    if (s && s !== myPhone && !contacts[s]) {
+      db.ref('contacts/' + myPhone + '/' + s).set({ name: s, added: Date.now() });
+      added++;
+    }
+  });
+  showToast(added + ' contacts added');
 }
 
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-function escapeHtml(t) {
-  const d = document.createElement('div');
-  d.textContent = t;
-  return d.innerHTML;
 }
 
 // ========================
@@ -594,7 +563,7 @@ function openChat(phone) {
   activeChatRoom = roomId;
 
   document.getElementById('chatContactName').textContent = contacts[phone]?.name || phone;
-  const reg = globalUsers[phone];
+  const reg = registeredPhones[phone];
   document.getElementById('chatContactStatus').textContent = reg && reg.online ? 'Online' : 'Offline';
   document.getElementById('chatScreen').classList.add('active');
   document.getElementById('chatMessages').innerHTML = '';
@@ -627,7 +596,7 @@ function sendMsg() {
 }
 
 // ========================
-// CALLS
+// CALLS - BY PHONE NUMBER
 // ========================
 function listenForCalls() {
   db.ref('calls').on('child_added', snap => {
@@ -643,7 +612,7 @@ function listenForCalls() {
 async function startCall(video = false, phone = null) {
   const target = phone || currentContact;
   if (!target) return;
-  if (!globalUsers[target]) { alert('Not registered on FreeChat. Invite them first.'); return; }
+  if (!registeredPhones[target]) { alert('Not registered on FreeChat. Invite them first.'); return; }
 
   currentCallId = 'call_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   const callRef = db.ref('calls/' + currentCallId);
