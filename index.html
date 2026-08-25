@@ -271,7 +271,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getDatabase, ref, set, push, get, onValue, onChildAdded, update, remove, query, orderByChild, equalTo, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyC8OyQ99giriQ_v0RpBaXoRFcAeM53CufQ",
@@ -287,7 +286,6 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
-    const storage = getStorage(app);
 
     let me = null;
     let userPhone = "+966500000000";
@@ -309,10 +307,6 @@
 
     function roomId(uidA, uidB) {
       return [uidA, uidB].sort().join("_");
-    }
-
-    function safeFileName(name) {
-      return String(name || "file").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120);
     }
 
     if ("serviceWorker" in navigator) {
@@ -520,23 +514,23 @@
       $("fileInput").click();
     };
 
-    $("fileInput").onchange = async (e) => {
+    // Base64 File Handler (No Storage Required)
+    $("fileInput").onchange = (e) => {
       const file = e.target.files[0];
       e.target.value = "";
       if (!file || !selectedContact) return;
 
-      try {
-        const room = roomId(me.uid, selectedContact.uid);
-        const path = `chatMedia/${room}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
-        const fileRef = storageRef(storage, path);
-        await uploadBytes(fileRef, file);
-        const url = await getDownloadURL(fileRef);
-
-        const type = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "audio";
-        await sendMessage(type, url);
-      } catch (err) {
-        alert("Media upload failed.");
+      if (file.size > 2 * 1024 * 1024) {
+        alert("File size limit for direct chat is 2MB.");
+        return;
       }
+
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onloadend = async () => {
+        const type = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "audio";
+        await sendMessage(type, reader.result);
+      };
     };
 
     $("locationBtn").onclick = () => {
@@ -557,10 +551,15 @@
         recorder.onstop = async () => {
           stream.getTracks().forEach(t => t.stop());
           const blob = new Blob(recordingChunks, { type: "audio/webm" });
-          const fileRef = storageRef(storage, `voiceNotes/${roomId(me.uid, selectedContact.uid)}/${crypto.randomUUID()}.webm`);
-          await uploadBytes(fileRef, blob);
-          const url = await getDownloadURL(fileRef);
-          await sendMessage("audio", url);
+          if (blob.size > 1 * 1024 * 1024) {
+            alert("Voice note is too large.");
+            return;
+          }
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+          reader.onloadend = async () => {
+            await sendMessage("audio", reader.result);
+          };
         };
         recorder.start();
         $("recordBtn").textContent = "⏹";
