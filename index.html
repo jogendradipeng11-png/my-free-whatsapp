@@ -11,18 +11,15 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
-  <title>FreeChat P2P - WhatsApp & IMO Clone</title>
+  <title>FreeChat P2P - Free Calls & Chat</title>
 
   <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
-      margin: 0;
-      padding: 0;
-      height: 100dvh;
-      overflow: hidden;
+      margin: 0; padding: 0;
+      height: 100dvh; overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      background: #0b141a;
-      color: #e9edef;
+      background: #0b141a; color: #e9edef;
     }
     button, input { font: inherit; }
     button { cursor: pointer; border: 0; }
@@ -30,329 +27,214 @@
 
     /* Auth Modal */
     #auth-modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.92);
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.93);
       z-index: 99999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       padding: 20px;
     }
     .auth-card {
-      background: #111b21;
-      border: 1px solid #2a3942;
-      padding: 28px;
-      border-radius: 14px;
-      width: 100%;
-      max-width: 380px;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.7);
+      background: #111b21; border: 1px solid #2a3942;
+      padding: 28px; border-radius: 16px;
+      width: 100%; max-width: 380px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
     }
 
     /* Contact Picker Modal */
     #contact-picker-modal {
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background: rgba(0,0,0,0.9);
       z-index: 99998;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       padding: 16px;
     }
     .picker-card {
-      background: #111b21;
-      border: 1px solid #2a3942;
-      padding: 20px;
-      border-radius: 14px;
-      width: 100%;
-      max-width: 440px;
-      max-height: 85vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.7);
+      background: #111b21; border: 1px solid #2a3942;
+      padding: 20px; border-radius: 14px;
+      width: 100%; max-width: 460px; max-height: 88vh;
+      display: flex; flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
     }
     .picker-list {
-      flex: 1;
-      overflow-y: auto;
-      margin: 12px 0;
-      border: 1px solid #26343c;
-      border-radius: 8px;
-      padding: 6px;
-      background: #0b141a;
-      max-height: 50vh;
+      flex: 1; overflow-y: auto; margin: 12px 0;
+      border: 1px solid #26343c; border-radius: 8px;
+      padding: 6px; background: #0b141a; max-height: 55vh;
     }
     .picker-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px;
-      border-bottom: 1px solid #1f2c34;
-      cursor: pointer;
-      font-size: 13px;
-      border-radius: 6px;
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px; border-bottom: 1px solid #1f2c34;
+      cursor: pointer; font-size: 13px; border-radius: 6px;
     }
     .picker-item:hover { background: #202c33; }
     .picker-item input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: #25d366;
-      flex-shrink: 0;
+      width: 18px; height: 18px; accent-color: #25d366; flex-shrink: 0;
     }
 
     /* App Layout */
     .app { display: flex; width: 100%; height: 100%; }
     .side {
-      width: 380px;
-      max-width: 100%;
-      display: flex;
-      flex-direction: column;
-      background: #111b21;
-      border-right: 1px solid #2a3942;
+      width: 380px; max-width: 100%;
+      display: flex; flex-direction: column;
+      background: #111b21; border-right: 1px solid #2a3942;
     }
     .top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 6px;
-      padding: 12px 14px;
-      background: #202c33;
-      border-bottom: 1px solid #2a3942;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 6px; padding: 12px 14px;
+      background: #202c33; border-bottom: 1px solid #2a3942;
     }
     .title {
-      overflow: hidden;
-      color: #25d366;
-      font-weight: bold;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 14px;
-      flex: 1;
+      overflow: hidden; color: #25d366; font-weight: bold;
+      text-overflow: ellipsis; white-space: nowrap; font-size: 14px; flex: 1;
     }
     .btn {
-      padding: 7px 11px;
-      border-radius: 7px;
-      background: #075e54;
-      color: #fff;
-      font-size: 12px;
-      font-weight: 600;
-      transition: background 0.15s;
+      padding: 7px 11px; border-radius: 7px;
+      background: #075e54; color: #fff;
+      font-size: 12px; font-weight: 600;
+      transition: all 0.15s;
     }
     .btn:hover { background: #0b806f; }
     .btn-secondary { background: #2a3942; }
     .btn-secondary:hover { background: #374248; }
     .btn-danger { background: #552222; color: #ff6b6b; }
     .btn-danger:hover { background: #772222; }
+    .btn-invite { background: #1e4d3f; color: #25d366; }
+    .btn-invite:hover { background: #2a6b52; }
     .contacts { flex: 1; overflow-y: auto; }
     .contact-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 14px;
-      border-bottom: 1px solid #1f2c34;
-      cursor: pointer;
-      transition: background 0.1s;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; border-bottom: 1px solid #1f2c34;
+      cursor: pointer; transition: background 0.1s;
     }
     .contact-row:hover { background: #202c33; }
     .contact-info { display: flex; gap: 12px; align-items: center; flex: 1; min-width: 0; }
     .avatar {
-      display: grid;
-      flex: 0 0 auto;
-      width: 42px;
-      height: 42px;
-      place-items: center;
-      border-radius: 50%;
-      background: #25d366;
-      color: #111;
-      font-weight: bold;
-      font-size: 14px;
+      display: grid; flex: 0 0 auto;
+      width: 44px; height: 44px; place-items: center;
+      border-radius: 50%; background: #25d366;
+      color: #111; font-weight: bold; font-size: 14px;
     }
+    .avatar.offline { background: #374248; color: #8696a0; }
     .contact-actions { display: flex; gap: 6px; flex-shrink: 0; }
     .action-icon-btn {
-      background: #2a3942;
-      color: #25d366;
-      border-radius: 50%;
-      width: 34px;
-      height: 34px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      border: none;
-      transition: background 0.15s;
+      background: #2a3942; color: #25d366;
+      border-radius: 50%; width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; border: none; transition: all 0.15s;
     }
-    .action-icon-btn:hover { background: #374248; }
+    .action-icon-btn:hover { background: #374248; transform: scale(1.05); }
     .action-icon-btn.delete-btn { color: #f15c6d; }
+    .action-icon-btn.invite-btn { color: #ffd700; }
 
     .chat {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
-      min-width: 0;
-      background: #0b141a;
+      display: flex; flex: 1; flex-direction: column;
+      min-width: 0; background: #0b141a;
     }
     .messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 18px;
+      flex: 1; overflow-y: auto; padding: 18px;
       background-image: radial-gradient(#1d2a31 1px, transparent 1px);
       background-size: 16px 16px;
     }
     .message {
-      max-width: min(78%, 520px);
-      margin: 6px 0;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: #202c33;
-      word-break: break-word;
-      font-size: 14px;
-      line-height: 1.4;
-      animation: fadeIn 0.2s ease;
+      max-width: min(80%, 540px); margin: 6px 0;
+      padding: 10px 14px; border-radius: 12px;
+      background: #202c33; word-break: break-word;
+      font-size: 14.5px; line-height: 1.45;
+      animation: msgIn 0.25s ease;
     }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .mine { margin-left: auto; background: #005c4b; }
-    .meta {
-      margin-top: 4px;
-      color: #8696a0;
-      font-size: 10px;
-      text-align: right;
-    }
+    .meta { margin-top: 4px; color: #8696a0; font-size: 10px; text-align: right; }
     .message img, .message video {
-      max-width: 100%;
-      max-height: 280px;
-      margin-top: 6px;
-      border-radius: 8px;
-      display: block;
+      max-width: 100%; max-height: 260px;
+      margin-top: 6px; border-radius: 8px; display: block;
     }
     .message audio { width: 100%; margin-top: 6px; height: 36px; }
     .inputbar {
-      display: flex;
-      gap: 6px;
-      padding: 10px 12px;
-      background: #202c33;
-      border-top: 1px solid #2a3942;
+      display: flex; gap: 6px; padding: 10px 12px;
+      background: #202c33; border-top: 1px solid #2a3942;
       align-items: center;
     }
     .inputbar input[type="text"] {
-      flex: 1;
-      min-width: 0;
-      padding: 11px 14px;
-      border: 0;
-      border-radius: 20px;
-      outline: none;
-      background: #2a3942;
-      color: #fff;
-      font-size: 14px;
+      flex: 1; min-width: 0; padding: 11px 16px;
+      border: 0; border-radius: 22px; outline: none;
+      background: #2a3942; color: #fff; font-size: 14.5px;
     }
-    .inputbar .btn { border-radius: 50%; width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center; }
+    .inputbar .btn { border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; }
 
     /* Call Screen */
     .call-screen {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
+      position: fixed; inset: 0; z-index: 9999;
       background: #000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
       overflow: hidden;
     }
     #remoteVideo {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      background: #111;
-      object-fit: cover;
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      background: #111; object-fit: cover;
     }
     #localVideo {
-      position: absolute;
-      right: 16px;
-      bottom: 100px;
-      width: 110px;
-      height: 150px;
-      border: 2px solid #25d366;
-      border-radius: 12px;
-      background: #000;
-      object-fit: cover;
-      z-index: 10;
+      position: absolute; right: 16px; bottom: 110px;
+      width: 120px; height: 170px;
+      border: 2.5px solid #25d366; border-radius: 14px;
+      background: #000; object-fit: cover; z-index: 10;
     }
     .call-header-info {
-      position: absolute;
-      top: 50px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      z-index: 10;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+      position: absolute; top: 50px;
+      display: flex; flex-direction: column;
+      align-items: center; z-index: 10;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.9);
     }
     .call-avatar-lg {
-      width: 90px;
-      height: 90px;
-      border-radius: 50%;
-      background: #25d366;
-      color: #111;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      font-weight: bold;
-      margin-bottom: 14px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+      width: 100px; height: 100px; border-radius: 50%;
+      background: #25d366; color: #111;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px; font-weight: bold;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+      animation: pulseAvatar 2s infinite;
     }
+    @keyframes pulseAvatar { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
     .call-controls {
-      position: absolute;
-      bottom: 40px;
-      display: flex;
-      gap: 30px;
-      z-index: 10;
+      position: absolute; bottom: 45px;
+      display: flex; gap: 35px; z-index: 10;
     }
     .call-btn-round {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      color: #fff;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-      border: none;
-      transition: transform 0.1s;
+      width: 68px; height: 68px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; color: #fff;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+      border: none; transition: transform 0.1s;
     }
-    .call-btn-round:active { transform: scale(0.95); }
+    .call-btn-round:active { transform: scale(0.92); }
     .btn-hangup { background: #d93025; }
-    .btn-accept { background: #25d366; }
+    .btn-accept { background: #25d366; animation: pulseAccept 1.5s infinite; }
+    @keyframes pulseAccept { 0%,100%{box-shadow:0 0 0 0 rgba(37,211,102,0.4)} 50%{box-shadow:0 0 0 15px rgba(37,211,102,0)} }
+
+    .ringing-indicator {
+      position: absolute; top: 180px; z-index: 10;
+      display: flex; gap: 6px; align-items: center;
+    }
+    .ringing-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #25d366; animation: ringDot 1.2s infinite ease-in-out;
+    }
+    .ringing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .ringing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes ringDot { 0%,80%,100%{transform:scale(0.4);opacity:0.3} 40%{transform:scale(1);opacity:1} }
 
     @media (max-width: 700px) {
       .side { width: 100%; }
       .chat { display: none; }
-      .chat.mobile-open {
-        position: fixed;
-        inset: 0;
-        z-index: 5;
-        display: flex;
-      }
+      .chat.mobile-open { position: fixed; inset: 0; z-index: 5; display: flex; }
     }
 
-    .empty-state {
-      text-align: center;
-      color: #8696a0;
-      padding: 40px 20px;
-      font-size: 13px;
-    }
-    .loader {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid #25d366;
-      border-right-color: transparent;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-right: 8px;
-      vertical-align: middle;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-state { text-align: center; color: #8696a0; padding: 40px 20px; font-size: 13px; line-height: 1.6; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; margin-left: 6px; }
+    .badge-online { background: #25d366; color: #111; }
+    .badge-offline { background: #374248; color: #8696a0; }
+    .badge-new { background: #ffd700; color: #111; }
   </style>
 <base target="_blank">
 </head>
@@ -361,17 +243,17 @@
   <!-- Auth Modal -->
   <div id="auth-modal" class="hidden">
     <div class="auth-card">
-      <h2 style="color: #25d366; margin-top: 0; font-size: 1.3rem; text-align: center;">🔐 FreeChat Login</h2>
+      <h2 style="color: #25d366; margin-top: 0; font-size: 1.4rem; text-align: center;">🔐 FreeChat</h2>
       <div id="step-phone">
-        <p style="font-size: 13px; color: #aebac1; margin-bottom: 14px;">Enter your mobile number to start:</p>
-        <input id="input-phone" type="tel" placeholder="+966500000000" style="width:100%; padding:12px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:8px; margin-bottom:14px; outline:none; font-size:15px;">
-        <button id="btn-send-code" class="btn" style="width:100%; padding:12px; font-size:14px;">Send Verification Code</button>
+        <p style="font-size: 13px; color: #aebac1; margin-bottom: 14px;">Enter your mobile number:</p>
+        <input id="input-phone" type="tel" placeholder="+966500000000" style="width:100%; padding:13px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:10px; margin-bottom:14px; outline:none; font-size:16px;">
+        <button id="btn-send-code" class="btn" style="width:100%; padding:13px; font-size:14px;">Send Verification Code</button>
       </div>
       <div id="step-code" class="hidden">
         <p style="font-size: 13px; color: #aebac1; margin-bottom: 6px;">Enter the 6-digit code:</p>
         <p style="font-size: 11px; color: #8696a0; margin-bottom: 14px;">(Demo mode — code shown in alert)</p>
-        <input id="input-code" type="password" placeholder="••••••" maxlength="6" style="width:100%; padding:12px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:8px; margin-bottom:14px; outline:none; text-align:center; font-size:20px; letter-spacing:6px;">
-        <button id="btn-verify-code" class="btn" style="width:100%; padding:12px; font-size:14px;">Verify & Continue</button>
+        <input id="input-code" type="password" placeholder="••••••" maxlength="6" style="width:100%; padding:13px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:10px; margin-bottom:14px; outline:none; text-align:center; font-size:22px; letter-spacing:8px;">
+        <button id="btn-verify-code" class="btn" style="width:100%; padding:13px; font-size:14px;">Verify & Continue</button>
       </div>
     </div>
   </div>
@@ -379,8 +261,8 @@
   <!-- Contact Picker Modal -->
   <div id="contact-picker-modal" class="hidden">
     <div class="picker-card">
-      <h3 style="color: #25d366; margin-top: 0; font-size: 1.1rem;">📥 Import Contacts</h3>
-      <p style="font-size: 12px; color: #aebac1; margin-top:0;">Select contacts from your device or add manually:</p>
+      <h3 style="color: #25d366; margin-top: 0; font-size: 1.15rem;">📥 Import Contacts</h3>
+      <p style="font-size: 12px; color: #aebac1; margin-top:0;">Select contacts to add. Registered users appear automatically.</p>
       <div id="pickerListContainer" class="picker-list"></div>
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <button id="pickerManualBtn" class="btn btn-secondary" style="font-size:12px;">➕ Manual Add</button>
@@ -396,10 +278,10 @@
   <div class="app">
     <aside class="side">
       <div class="top">
-        <div id="meLabel" class="title"><span class="loader"></span>Loading...</div>
+        <div id="meLabel" class="title">Loading...</div>
         <div style="display:flex; gap:5px;">
           <button class="btn" id="addContactBtn" title="Import Contacts" style="background:#005c4b;">📥 Add</button>
-          <button class="btn btn-danger" id="logoutBtn" title="Logout">Logout</button>
+          <button class="btn btn-danger" id="logoutBtn">Logout</button>
           <button class="btn" id="installBtn" style="display:none; background:#1e4d3f;">📲 Install</button>
         </div>
       </div>
@@ -410,18 +292,16 @@
 
     <main id="chatPanel" class="chat">
       <div class="top">
-        <button class="btn btn-secondary" id="backBtn" style="width:auto; padding:7px 12px; border-radius:7px;">← Back</button>
+        <button class="btn btn-secondary" id="backBtn" style="width:auto; padding:7px 12px;">← Back</button>
         <div id="chatTitle" class="title">Select a contact</div>
         <div style="display:flex; gap:6px;">
           <button class="btn btn-secondary" id="audioCallBtn" title="Audio call">📞</button>
           <button class="btn btn-secondary" id="videoCallBtn" title="Video call">🎥</button>
         </div>
       </div>
-
       <div id="messages" class="messages">
         <div class="empty-state">Select a contact to start chatting or calling</div>
       </div>
-
       <div class="inputbar">
         <input id="fileInput" type="file" hidden accept="image/*,video/*,audio/*">
         <button class="btn btn-secondary" id="fileBtn" title="Send media">📎</button>
@@ -441,8 +321,12 @@
 
     <div class="call-header-info">
       <div id="callAvatar" class="call-avatar-lg">?</div>
-      <h2 id="callTargetName" style="margin: 0; font-size: 1.5rem; color: #fff;">User</h2>
-      <p id="callStatusLabel" style="margin: 8px 0 0 0; font-size: 1rem; color: #25d366; font-weight: 600;">Calling...</p>
+      <h2 id="callTargetName" style="margin: 0; font-size: 1.6rem; color: #fff;">User</h2>
+      <p id="callStatusLabel" style="margin: 8px 0 0 0; font-size: 1.05rem; color: #25d366; font-weight: 600;">Calling...</p>
+    </div>
+
+    <div class="ringing-indicator" id="ringingIndicator">
+      <div class="ringing-dot"></div><div class="ringing-dot"></div><div class="ringing-dot"></div>
     </div>
 
     <div class="call-controls">
@@ -477,6 +361,7 @@
     let generatedCode = "";
     let selectedContact = null;
     let fetchedDeviceContacts = [];
+    let allRegisteredUsers = {}; // phone -> user data
 
     let unsubscribeMessages = null;
     let activeCallId = null;
@@ -489,6 +374,7 @@
     let callStatusListener = null;
     let callerCandidatesListener = null;
     let calleeCandidatesListener = null;
+    let ringingInterval = null;
 
     let recorder = null;
     let recordingChunks = [];
@@ -496,21 +382,33 @@
 
     const $ = (id) => document.getElementById(id);
 
-    function safeId(str) {
-      return String(str || "").replace(/[^a-zA-Z0-9]/g, "");
-    }
+    function safeId(str) { return String(str || "").replace(/[^a-zA-Z0-9]/g, ""); }
+    function roomId(a, b) { return [safeId(a), safeId(b)].sort().join("_"); }
 
-    function roomId(a, b) {
-      return [safeId(a), safeId(b)].sort().join("_");
+    // ===== AUDIO =====
+    const ringCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playRingtone() {
+      if (ringingInterval) clearInterval(ringingInterval);
+      const playBeep = () => {
+        if (!activeCallId) return;
+        const osc = ringCtx.createOscillator();
+        const gain = ringCtx.createGain();
+        osc.connect(gain); gain.connect(ringCtx.destination);
+        osc.frequency.value = 520;
+        gain.gain.setValueAtTime(0.15, ringCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ringCtx.currentTime + 0.4);
+        osc.start(); osc.stop(ringCtx.currentTime + 0.4);
+      };
+      playBeep();
+      ringingInterval = setInterval(playBeep, 1200);
+    }
+    function stopRingtone() {
+      if (ringingInterval) { clearInterval(ringingInterval); ringingInterval = null; }
     }
 
     // ===== ERROR HANDLING =====
-    window.addEventListener("error", (e) => {
-      console.error("Global error:", e.error || e.message);
-    });
-    window.addEventListener("unhandledrejection", (e) => {
-      console.error("Unhandled rejection:", e.reason);
-    });
+    window.addEventListener("error", (e) => console.error("Global error:", e.error || e.message));
+    window.addEventListener("unhandledrejection", (e) => console.error("Unhandled:", e.reason));
 
     // ===== SERVICE WORKER =====
     if ("serviceWorker" in navigator) {
@@ -520,29 +418,18 @@
     }
 
     window.addEventListener("beforeinstallprompt", (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      const btn = $("installBtn");
-      if (btn) btn.style.display = "inline-block";
+      e.preventDefault(); deferredPrompt = e;
+      const btn = $("installBtn"); if (btn) btn.style.display = "inline-block";
     });
 
     // ===== DOM READY =====
     document.addEventListener("DOMContentLoaded", () => {
-      if (!userPhone) {
-        showAuth(true);
-      } else {
-        showAuth(false);
-        boot().catch(err => {
-          console.error("Boot failed:", err);
-          alert("Login failed. Please logout and try again.");
-          showAuth(true);
-        });
-      }
+      if (!userPhone) { showAuth(true); }
+      else { showAuth(false); boot().catch(err => { console.error(err); alert("Login failed. Logout and retry."); showAuth(true); }); }
     });
 
     function showAuth(show) {
-      const modal = $("auth-modal");
-      if (modal) modal.classList.toggle("hidden", !show);
+      const modal = $("auth-modal"); if (modal) modal.classList.toggle("hidden", !show);
     }
 
     // ===== AUTH FLOW =====
@@ -564,10 +451,7 @@
       await boot();
     };
 
-    $("logoutBtn").onclick = () => {
-      localStorage.removeItem("freechat_phone");
-      location.reload();
-    };
+    $("logoutBtn").onclick = () => { localStorage.removeItem("freechat_phone"); location.reload(); };
 
     $("installBtn").onclick = async () => {
       if (!deferredPrompt) return;
@@ -586,56 +470,52 @@
       $("meLabel").textContent = userPhone;
 
       const myRef = ref(db, `users/${me.uid}`);
-      await set(myRef, {
-        uid: me.uid,
-        phone: userPhone,
-        online: true,
-        lastSeen: Date.now()
-      });
+      await set(myRef, { uid: me.uid, phone: userPhone, online: true, lastSeen: Date.now() });
       onDisconnect(myRef).update({ online: false, lastSeen: Date.now() });
 
-      loadContacts();
+      // Listen to ALL registered users so we know who joined
+      onValue(ref(db, "users"), (snap) => {
+        allRegisteredUsers = {};
+        snap.forEach(child => { const u = child.val(); if (u.phone) allRegisteredUsers[u.phone] = u; });
+        renderContacts();
+      });
+
+      // Listen to my contacts
+      onValue(ref(db, `userContacts/${me.uid}`), () => { renderContacts(); });
+
       listenIncomingCalls();
     }
 
-    // ===== CONTACTS =====
-    function loadContacts() {
-      const list = $("contactList");
-      if (!list) return;
+    // ===== CONTACTS RENDERING =====
+    function renderContacts() {
+      const list = $("contactList"); if (!list) return;
+      list.innerHTML = "";
 
-      onValue(ref(db, `userContacts/${me.uid}`), async (snap) => {
-        list.innerHTML = "";
-        const contacts = [];
-        snap.forEach(child => {
-          const c = child.val();
-          c._key = child.key;
-          contacts.push(c);
-        });
+      // Get my saved contacts
+      get(ref(db, `userContacts/${me.uid}`)).then(snap => {
+        const myContacts = [];
+        snap.forEach(child => { const c = child.val(); c._key = child.key; myContacts.push(c); });
 
-        if (contacts.length === 0) {
+        if (myContacts.length === 0) {
           list.innerHTML = `<div class="empty-state">No contacts yet.<br>Tap <b>📥 Add</b> to import from your phone.</div>`;
           return;
         }
 
-        // Sort by name/phone
-        contacts.sort((a, b) => (a.name || a.phone || "").localeCompare(b.name || b.phone || ""));
+        // Sort: registered first, then by name/phone
+        myContacts.sort((a, b) => {
+          const aReg = !!allRegisteredUsers[a.phone];
+          const bReg = !!allRegisteredUsers[b.phone];
+          if (aReg !== bReg) return bReg - aReg;
+          return (a.name || a.phone || "").localeCompare(b.name || b.phone || "");
+        });
 
-        for (const c of contacts) {
-          const phone = c.phone || c.name || "Unknown";
+        myContacts.forEach(c => {
+          const phone = c.phone || "";
+          const name = c.name || phone;
           const key = c._key;
-
-          // Check if this contact is registered in the app
-          let isRegistered = false;
-          let registeredUid = c.uid || null;
-          if (!registeredUid) {
-            const usersSnap = await get(ref(db, "users"));
-            usersSnap.forEach(u => {
-              if (u.val().phone === phone) registeredUid = u.val().uid;
-            });
-            if (registeredUid) isRegistered = true;
-          } else {
-            isRegistered = true;
-          }
+          const registeredUser = allRegisteredUsers[phone];
+          const isRegistered = !!registeredUser;
+          const isOnline = isRegistered && registeredUser.online;
 
           const row = document.createElement("div");
           row.className = "contact-row";
@@ -643,30 +523,45 @@
           const info = document.createElement("div");
           info.className = "contact-info";
           info.onclick = () => {
-            if (registeredUid) {
-              openChat({ uid: registeredUid, phone });
+            if (isRegistered) {
+              openChat({ uid: registeredUser.uid, phone });
             } else {
-              alert("This contact hasn't joined FreeChat yet. Invite them via WhatsApp!");
+              if (confirm(`${name} hasn't joined FreeChat yet. Send WhatsApp invite?`)) {
+                const msg = encodeURIComponent(`Hey ${name}! Join me on FreeChat for free unlimited calls & chat: ${window.location.href}`);
+                window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+              }
             }
           };
 
           const avatar = document.createElement("div");
-          avatar.className = "avatar";
-          avatar.textContent = phone.slice(-2);
+          avatar.className = "avatar" + (isOnline ? "" : " offline");
+          avatar.textContent = name.slice(0, 2).toUpperCase();
 
           const details = document.createElement("div");
           details.style.minWidth = "0";
-          const nameEl = document.createElement("strong");
-          nameEl.textContent = phone;
-          nameEl.style.display = "block";
-          nameEl.style.overflow = "hidden";
-          nameEl.style.textOverflow = "ellipsis";
-          nameEl.style.whiteSpace = "nowrap";
+
+          const nameEl = document.createElement("div");
+          nameEl.style.display = "flex"; nameEl.style.alignItems = "center";
+          const strong = document.createElement("strong");
+          strong.textContent = name;
+          strong.style.overflow = "hidden"; strong.style.textOverflow = "ellipsis"; strong.style.whiteSpace = "nowrap";
+          nameEl.appendChild(strong);
+
+          if (isRegistered) {
+            const badge = document.createElement("span");
+            badge.className = "badge " + (isOnline ? "badge-online" : "badge-offline");
+            badge.textContent = isOnline ? "ONLINE" : "OFFLINE";
+            nameEl.appendChild(badge);
+          } else {
+            const badge = document.createElement("span");
+            badge.className = "badge badge-new";
+            badge.textContent = "INVITE";
+            nameEl.appendChild(badge);
+          }
 
           const statusEl = document.createElement("div");
-          statusEl.style.fontSize = "11px";
-          statusEl.style.color = isRegistered ? "#25d366" : "#8696a0";
-          statusEl.textContent = isRegistered ? "On FreeChat • Tap to chat" : "Not on FreeChat • Invite them";
+          statusEl.style.fontSize = "11px"; statusEl.style.color = "#8696a0"; statusEl.style.marginTop = "2px";
+          statusEl.textContent = isRegistered ? (isOnline ? "Tap to chat or call" : "Offline • Messages will be delivered") : "Not on FreeChat yet • Tap to invite";
 
           details.append(nameEl, statusEl);
           info.append(avatar, details);
@@ -679,15 +574,26 @@
             audioBtn.className = "action-icon-btn";
             audioBtn.innerHTML = "📞";
             audioBtn.title = "Audio Call";
-            audioBtn.onclick = (e) => { e.stopPropagation(); startCall({ uid: registeredUid, phone }, true); };
+            audioBtn.onclick = (e) => { e.stopPropagation(); startCall({ uid: registeredUser.uid, phone }, true); };
 
             const videoBtn = document.createElement("button");
             videoBtn.className = "action-icon-btn";
             videoBtn.innerHTML = "🎥";
             videoBtn.title = "Video Call";
-            videoBtn.onclick = (e) => { e.stopPropagation(); startCall({ uid: registeredUid, phone }, false); };
+            videoBtn.onclick = (e) => { e.stopPropagation(); startCall({ uid: registeredUser.uid, phone }, false); };
 
             actions.append(audioBtn, videoBtn);
+          } else {
+            const inviteBtn = document.createElement("button");
+            inviteBtn.className = "action-icon-btn invite-btn";
+            inviteBtn.innerHTML = "✉️";
+            inviteBtn.title = "WhatsApp Invite";
+            inviteBtn.onclick = (e) => {
+              e.stopPropagation();
+              const msg = encodeURIComponent(`Hey ${name}! Join me on FreeChat for free unlimited calls & chat: ${window.location.href}`);
+              window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+            };
+            actions.append(inviteBtn);
           }
 
           const delBtn = document.createElement("button");
@@ -699,7 +605,7 @@
 
           row.append(info, actions);
           list.appendChild(row);
-        }
+        });
       });
     }
 
@@ -715,7 +621,7 @@
       const container = $("pickerListContainer");
       if (!modal || !container) return;
 
-      container.innerHTML = `<div class="empty-state"><span class="loader"></span>Loading contacts...</div>`;
+      container.innerHTML = `<div class="empty-state">Loading contacts...</div>`;
       modal.classList.remove("hidden");
       fetchedDeviceContacts = [];
 
@@ -723,9 +629,7 @@
         try {
           const results = await navigator.contacts.select(["name", "tel", "email"], { multiple: true });
           fetchedDeviceContacts = results || [];
-        } catch (e) {
-          console.log("Contact picker error:", e);
-        }
+        } catch (e) { console.log("Picker error:", e); }
       }
 
       renderPicker();
@@ -744,6 +648,8 @@
         const name = (c.name && c.name[0]) || "Unnamed";
         const tel = (c.tel && c.tel[0]) || "";
         if (!tel) return;
+        const cleanPhone = tel.replace(/[^0-9+]/g, "");
+        const isReg = !!allRegisteredUsers[cleanPhone];
 
         const item = document.createElement("label");
         item.className = "picker-item";
@@ -751,30 +657,27 @@
           <input type="checkbox" value="${idx}" class="picker-cb" style="accent-color:#25d366; width:18px; height:18px;">
           <div style="flex:1; min-width:0;">
             <div style="color:#fff; font-weight:600; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${name}</div>
-            <div style="color:#8696a0; font-size:11px;">${tel}</div>
+            <div style="color:#8696a0; font-size:11px;">${cleanPhone} ${isReg ? '<span style="color:#25d366;">✓ On FreeChat</span>' : ''}</div>
           </div>
         `;
         container.appendChild(item);
       });
     }
 
-    $("pickerCancelBtn").onclick = () => {
-      $("contact-picker-modal").classList.add("hidden");
-    };
+    $("pickerCancelBtn").onclick = () => { $("contact-picker-modal").classList.add("hidden"); };
 
     $("pickerManualBtn").onclick = () => {
       const phone = prompt("Enter phone number (e.g. +966500000000):");
       if (!phone) return;
       const clean = phone.trim();
       const key = safeId(clean);
-      set(ref(db, `userContacts/${me.uid}/${key}`), {
-        phone: clean,
-        name: clean,
-        addedAt: Date.now()
-      });
-      // WhatsApp invite
-      const msg = encodeURIComponent(`Hey! Join me on FreeChat for free unlimited calls and chat: ${window.location.href}`);
-      window.open(`https://wa.me/${clean}?text=${msg}`, "_blank");
+      set(ref(db, `userContacts/${me.uid}/${key}`), { phone: clean, name: clean, addedAt: Date.now() });
+
+      // Only send WhatsApp invite if NOT registered
+      if (!allRegisteredUsers[clean]) {
+        const msg = encodeURIComponent(`Hey! Join me on FreeChat for free unlimited calls & chat: ${window.location.href}`);
+        window.open(`https://wa.me/${clean}?text=${msg}`, "_blank");
+      }
       $("contact-picker-modal").classList.add("hidden");
     };
 
@@ -789,19 +692,17 @@
         if (!phone) continue;
 
         const key = safeId(phone);
-        await set(ref(db, `userContacts/${me.uid}/${key}`), {
-          phone,
-          name,
-          addedAt: Date.now()
-        });
+        await set(ref(db, `userContacts/${me.uid}/${key}`), { phone, name, addedAt: Date.now() });
 
-        // Send WhatsApp invite
-        const msg = encodeURIComponent(`Hey ${name}! Join me on FreeChat for free unlimited calls and chat: ${window.location.href}`);
-        window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+        // Only WhatsApp invite if NOT already registered
+        if (!allRegisteredUsers[phone]) {
+          const msg = encodeURIComponent(`Hey ${name}! Join me on FreeChat for free unlimited calls & chat: ${window.location.href}`);
+          window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+        }
       }
 
       $("contact-picker-modal").classList.add("hidden");
-      alert("Contacts added & WhatsApp invites sent!");
+      alert("Contacts added! Registered users appear automatically.");
     };
 
     // ===== CHAT =====
@@ -815,9 +716,7 @@
       unsubscribeMessages = null;
 
       const room = roomId(me.uid, contact.uid);
-      unsubscribeMessages = onChildAdded(ref(db, `chats/${room}/messages`), (snap) => {
-        renderMsg(snap.val());
-      });
+      unsubscribeMessages = onChildAdded(ref(db, `chats/${room}/messages`), (snap) => { renderMsg(snap.val()); });
     }
 
     $("backBtn").onclick = () => {
@@ -827,80 +726,51 @@
     };
 
     function renderMsg(msg) {
+      const container = $("messages"); if (!container) return;
       const box = document.createElement("div");
       const isMine = msg.senderUid === me.uid;
       box.className = `message ${isMine ? "mine" : ""}`;
 
       if (msg.type === "image") {
-        const img = document.createElement("img");
-        img.src = msg.content;
-        img.style.cursor = "pointer";
-        img.onclick = () => window.open(msg.content, "_blank");
-        box.appendChild(img);
+        const img = document.createElement("img"); img.src = msg.content; img.style.cursor = "pointer";
+        img.onclick = () => window.open(msg.content, "_blank"); box.appendChild(img);
       } else if (msg.type === "video") {
-        const v = document.createElement("video");
-        v.src = msg.content;
-        v.controls = true;
-        v.playsInline = true;
-        box.appendChild(v);
+        const v = document.createElement("video"); v.src = msg.content; v.controls = true; v.playsInline = true; box.appendChild(v);
       } else if (msg.type === "audio") {
-        const a = document.createElement("audio");
-        a.src = msg.content;
-        a.controls = true;
-        box.appendChild(a);
+        const a = document.createElement("audio"); a.src = msg.content; a.controls = true; box.appendChild(a);
       } else {
-        const t = document.createElement("div");
-        t.textContent = msg.content || "";
-        box.appendChild(t);
+        const t = document.createElement("div"); t.textContent = msg.content || ""; box.appendChild(t);
       }
 
-      const meta = document.createElement("div");
-      meta.className = "meta";
+      const meta = document.createElement("div"); meta.className = "meta";
       const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-      meta.textContent = time;
-      box.appendChild(meta);
+      meta.textContent = time; box.appendChild(meta);
 
-      $("messages").appendChild(box);
-      $("messages").scrollTop = $("messages").scrollHeight;
+      container.appendChild(box);
+      container.scrollTop = container.scrollHeight;
     }
 
     async function sendMsg(type, content) {
       if (!selectedContact) return alert("Select a contact first.");
       const room = roomId(me.uid, selectedContact.uid);
       await push(ref(db, `chats/${room}/messages`), {
-        senderUid: me.uid,
-        receiverUid: selectedContact.uid,
-        type,
-        content,
-        timestamp: Date.now()
+        senderUid: me.uid, receiverUid: selectedContact.uid,
+        type, content, timestamp: Date.now()
       });
     }
 
     $("sendBtn").onclick = async () => {
-      const input = $("messageInput");
-      const text = input.value.trim();
-      if (!text) return;
-      await sendMsg("text", text);
-      input.value = "";
+      const input = $("messageInput"); const text = input.value.trim();
+      if (!text) return; await sendMsg("text", text); input.value = "";
     };
+    $("messageInput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("sendBtn").click(); } });
 
-    $("messageInput").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); $("sendBtn").click(); }
-    });
-
-    $("fileBtn").onclick = () => {
-      if (!selectedContact) return alert("Select a contact first.");
-      $("fileInput").click();
-    };
-
+    $("fileBtn").onclick = () => { if (!selectedContact) return alert("Select a contact first."); $("fileInput").click(); };
     $("fileInput").onchange = (e) => {
-      const file = e.target.files[0];
-      e.target.value = "";
+      const file = e.target.files[0]; e.target.value = "";
       if (!file || !selectedContact) return;
       if (file.size > 2 * 1024 * 1024) return alert("Max file size is 2MB.");
-
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
+      const reader = new FileReader(); reader.readAsDataURL(file);
       reader.onloadend = async () => {
         const type = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "audio";
         await sendMsg(type, reader.result);
@@ -910,8 +780,7 @@
     $("locationBtn").onclick = () => {
       if (!selectedContact) return alert("Select a contact first.");
       navigator.geolocation.getCurrentPosition((pos) => {
-        const url = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
-        sendMsg("text", `📍 Location: ${url}`);
+        sendMsg("text", `📍 Location: https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`);
       }, () => alert("Location permission denied."));
     };
 
@@ -921,26 +790,21 @@
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           recordingChunks = [];
-          recorder = new MediaRecorder(stream);
+          recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
           recorder.ondataavailable = (e) => { if (e.data.size) recordingChunks.push(e.data); };
           recorder.onstop = async () => {
             stream.getTracks().forEach(t => t.stop());
             const blob = new Blob(recordingChunks, { type: "audio/webm" });
             if (blob.size > 1 * 1024 * 1024) { alert("Voice note too large."); return; }
-            const reader = new FileReader();
-            reader.readAsDataURL(blob);
+            const reader = new FileReader(); reader.readAsDataURL(blob);
             reader.onloadend = async () => await sendMsg("audio", reader.result);
           };
-          recorder.start();
-          $("recordBtn").textContent = "⏹";
-          $("recordBtn").style.background = "#d93025";
-        } catch (err) {
-          alert("Microphone access denied.");
-        }
+          recorder.start(100);
+          $("recordBtn").textContent = "⏹"; $("recordBtn").style.background = "#d93025";
+        } catch (err) { alert("Microphone access denied."); }
       } else {
         recorder.stop();
-        $("recordBtn").textContent = "🎙️";
-        $("recordBtn").style.background = "";
+        $("recordBtn").textContent = "🎙️"; $("recordBtn").style.background = "";
       }
     };
 
@@ -948,8 +812,12 @@
     const RTC_CFG = {
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
-      ]
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" },
+        { urls: "stun:stun3.l.google.com:19302" },
+        { urls: "stun:stun4.l.google.com:19302" }
+      ],
+      iceCandidatePoolSize: 10
     };
 
     async function setupPeer(audioOnly) {
@@ -957,7 +825,11 @@
       pc = new RTCPeerConnection(RTC_CFG);
 
       try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: !audioOnly });
+        const constraints = {
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: audioOnly ? false : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" }
+        };
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
         localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
         $("localVideo").srcObject = localStream;
         $("localVideo").style.display = audioOnly ? "none" : "block";
@@ -967,38 +839,39 @@
       }
 
       pc.ontrack = (e) => {
-        const stream = e.streams[0];
-        if (!stream) return;
+        const stream = e.streams[0]; if (!stream) return;
         $("remoteAudio").srcObject = stream;
         if (!audioOnly) $("remoteVideo").srcObject = stream;
         $("callStatusLabel").textContent = "Connected";
+        $("ringingIndicator").style.display = "none";
+        stopRingtone();
       };
 
       pc.onconnectionstatechange = () => {
         console.log("PC state:", pc.connectionState);
         if (pc.connectionState === "failed" || pc.connectionState === "disconnected" || pc.connectionState === "closed") {
-          endCall(false);
+          $("callStatusLabel").textContent = "Call ended";
+          setTimeout(() => endCall(false), 1000);
         }
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        console.log("ICE state:", pc.iceConnectionState);
       };
 
       return true;
     }
 
     function cleanupPeer() {
-      if (pc) {
-        try { pc.close(); } catch (e) {}
-        pc = null;
-      }
-      if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
-        localStream = null;
-      }
+      if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+      if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
       $("remoteVideo").srcObject = null;
       $("remoteAudio").srcObject = null;
       $("localVideo").srcObject = null;
     }
 
     function cleanupCallListeners() {
+      stopRingtone();
       if (callAnswerListener) { callAnswerListener(); callAnswerListener = null; }
       if (callStatusListener) { callStatusListener(); callStatusListener = null; }
       if (callerCandidatesListener) { callerCandidatesListener(); callerCandidatesListener = null; }
@@ -1009,14 +882,14 @@
     async function startCall(contact, audioOnly) {
       if (activeCallId) return alert("A call is already active.");
       selectedContact = contact;
-      isCaller = true;
-      isCallAccepted = false;
+      isCaller = true; isCallAccepted = false;
       activeCallId = crypto.randomUUID();
 
       $("callTargetName").textContent = contact.phone || "User";
       $("callAvatar").textContent = (contact.phone || "?").slice(-2);
       $("callStatusLabel").textContent = "Calling...";
       $("acceptCallBtn").classList.add("hidden");
+      $("ringingIndicator").style.display = "flex";
       $("callScreen").classList.remove("hidden");
 
       const ok = await setupPeer(audioOnly);
@@ -1062,24 +935,21 @@
         }
       });
 
-      // Listen for hangup/reject
+      // Listen for hangup/reject from remote
       callStatusListener = onValue(ref(db, `calls/${activeCallId}/status`), (snap) => {
         const st = snap.val();
-        if (st === "ended" || st === "rejected") {
-          $("callStatusLabel").textContent = st === "rejected" ? "Call rejected" : "Call ended";
-          setTimeout(() => endCall(false), 1500);
+        if (st === "ended") {
+          $("callStatusLabel").textContent = "Call ended";
+          setTimeout(() => endCall(false), 800);
+        } else if (st === "rejected") {
+          $("callStatusLabel").textContent = "Call rejected";
+          setTimeout(() => endCall(false), 1200);
         }
       });
     }
 
-    $("audioCallBtn").onclick = () => {
-      if (selectedContact) startCall(selectedContact, true);
-      else alert("Select a contact first.");
-    };
-    $("videoCallBtn").onclick = () => {
-      if (selectedContact) startCall(selectedContact, false);
-      else alert("Select a contact first.");
-    };
+    $("audioCallBtn").onclick = () => { if (selectedContact) startCall(selectedContact, true); else alert("Select a contact first."); };
+    $("videoCallBtn").onclick = () => { if (selectedContact) startCall(selectedContact, false); else alert("Select a contact first."); };
 
     // INCOMING CALLS
     function listenIncomingCalls() {
@@ -1089,12 +959,10 @@
           const data = child.val();
           const callId = child.key;
 
-          // STRICT filters to prevent ghost calls
           if (!data || data.status !== "ringing") return;
-          if (activeCallId) return; // already busy
-          if (data.callerUid === me.uid) return; // ignore self
+          if (activeCallId) return;
+          if (data.callerUid === me.uid) return;
           if (Date.now() - (data.createdAt || 0) > 30000) {
-            // Stale call >30s, clean it
             remove(ref(db, `calls/${callId}`)).catch(() => {});
             return;
           }
@@ -1107,9 +975,13 @@
           $("callAvatar").textContent = (data.callerPhone || "?").slice(-2);
           $("callStatusLabel").textContent = `Incoming ${data.audioOnly ? "Audio" : "Video"} Call`;
           $("acceptCallBtn").classList.remove("hidden");
+          $("ringingIndicator").style.display = "flex";
           $("callScreen").classList.remove("hidden");
 
+          playRingtone();
+
           $("acceptCallBtn").onclick = async () => {
+            stopRingtone();
             $("acceptCallBtn").classList.add("hidden");
             $("callStatusLabel").textContent = "Connecting...";
 
@@ -1135,7 +1007,6 @@
               status: "accepted"
             });
 
-            // Listen for caller ICE
             callerCandidatesListener = onChildAdded(ref(db, `calls/${callId}/callerCandidates`), async (snap) => {
               const cand = snap.val();
               if (cand && pc && pc.remoteDescription) {
@@ -1143,9 +1014,11 @@
               }
             });
 
-            // Listen for hangup
             callStatusListener = onValue(ref(db, `calls/${callId}/status`), (s) => {
-              if (s.val() === "ended") endCall(false);
+              if (s.val() === "ended") {
+                $("callStatusLabel").textContent = "Call ended";
+                setTimeout(() => endCall(false), 800);
+              }
             });
           };
         });
@@ -1157,6 +1030,7 @@
 
     async function endCall(notify) {
       if (!activeCallId) return;
+      stopRingtone();
 
       if (notify && activeCallRef) {
         await update(activeCallRef, { status: "ended" }).catch(() => {});
@@ -1167,12 +1041,10 @@
 
       $("callScreen").classList.add("hidden");
       $("acceptCallBtn").classList.add("hidden");
+      $("ringingIndicator").style.display = "none";
 
-      // Clean DB after delay
       const cid = activeCallId;
-      setTimeout(() => {
-        remove(ref(db, `calls/${cid}`)).catch(() => {});
-      }, 4000);
+      setTimeout(() => { remove(ref(db, `calls/${cid}`)).catch(() => {}); }, 4000);
 
       activeCallId = null;
       activeCallRef = null;
