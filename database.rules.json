@@ -1,34 +1,37 @@
-rules_version = '2';
-
-service firebase.storage {
-  match /b/{bucket}/o {
-
-    match /chatMedia/{roomId}/{fileName} {
-      allow read: if request.auth != null
-        && roomId.matches('.*' + request.auth.uid + '.*');
-
-      allow create: if request.auth != null
-        && roomId.matches('.*' + request.auth.uid + '.*')
-        && request.resource.size < 25 * 1024 * 1024
-        && (
-          request.resource.contentType.matches('image/.*')
-          || request.resource.contentType.matches('video/.*')
-          || request.resource.contentType.matches('audio/.*')
-        );
-
-      allow update, delete: if false;
-    }
-
-    match /voiceNotes/{roomId}/{fileName} {
-      allow read: if request.auth != null
-        && roomId.matches('.*' + request.auth.uid + '.*');
-
-      allow create: if request.auth != null
-        && roomId.matches('.*' + request.auth.uid + '.*')
-        && request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('audio/.*');
-
-      allow update, delete: if false;
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        // Any authenticated user can read user profiles to find contacts, but only the owner can write
+        ".read": "auth != null",
+        ".write": "auth != null && $uid === auth.uid"
+      }
+    },
+    "userContacts": {
+      "$uid": {
+        // Only the owner of the contact list can read or modify their contacts
+        ".read": "auth != null && $uid === auth.uid",
+        ".write": "auth != null && $uid === auth.uid"
+      }
+    },
+    "chats": {
+      "$roomId": {
+        // A chat room ID is formatted as uidA_uidb. Only participants whose UID is in the room name can read/write messages.
+        ".read": "auth != null && $roomId.contains(auth.uid)",
+        ".write": "auth != null && $roomId.contains(auth.uid)",
+        "messages": {
+          "$messageId": {
+            ".validate": "newData.hasChildren(['senderUid', 'content', 'timestamp']) && newData.child('senderUid').val() === auth.uid"
+          }
+        }
+      }
+    },
+    "calls": {
+      "$callId": {
+        // Only the caller or callee can read/write signaling data for an active call session
+        ".read": "auth != null && (data.child('callerUid').val() === auth.uid || data.child('calleeUid').val() === auth.uid || newData.child('callerUid').val() === auth.uid || newData.child('calleeUid').val() === auth.uid)",
+        ".write": "auth != null && (data.child('callerUid').val() === auth.uid || data.child('calleeUid').val() === auth.uid || !data.exists() || newData.child('callerUid').val() === auth.uid || newData.child('calleeUid').val() === auth.uid)"
+      }
     }
   }
 }
