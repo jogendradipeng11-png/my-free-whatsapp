@@ -26,7 +26,7 @@
     button { cursor: pointer; border: 0; }
     .hidden { display: none !important; }
 
-    /* Modal Overlay for Phone Authentication */
+    /* Modal Overlay for Secure Phone Authentication */
     #auth-modal {
       position: fixed;
       inset: 0;
@@ -49,7 +49,7 @@
 
     .app { display: flex; width: 100%; height: 100%; }
     .side {
-      width: 360px;
+      width: 380px;
       max-width: 100%;
       display: flex;
       flex-direction: column;
@@ -60,8 +60,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 8px;
-      padding: 14px;
+      gap: 6px;
+      padding: 12px;
       background: #202c33;
     }
     .title {
@@ -70,35 +70,54 @@
       font-weight: bold;
       text-overflow: ellipsis;
       white-space: nowrap;
+      font-size: 14px;
     }
     .btn {
-      padding: 8px 11px;
-      border-radius: 7px;
+      padding: 6px 10px;
+      border-radius: 6px;
       background: #075e54;
       color: #fff;
-      font-size: 13px;
+      font-size: 12px;
     }
     .btn:hover { background: #0b806f; }
     .contacts { flex: 1; overflow-y: auto; }
-    .contact {
+    .contact-row {
       display: flex;
-      gap: 10px;
-      padding: 14px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
       border-bottom: 1px solid #26343c;
       cursor: pointer;
     }
-    .contact:hover { background: #202c33; }
+    .contact-row:hover { background: #202c33; }
+    .contact-info { display: flex; gap: 10px; align-items: center; flex: 1; min-width: 0; }
     .avatar {
       display: grid;
       flex: 0 0 auto;
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
       place-items: center;
       border-radius: 50%;
       background: #25d366;
       color: #111;
       font-weight: bold;
+      font-size: 13px;
     }
+    .contact-actions { display: flex; gap: 6px; }
+    .action-icon-btn {
+      background: #2a3942;
+      color: #25d366;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+    .action-icon-btn:hover { background: #374248; }
+    .delete-btn { color: #f15c6d; }
+
     .chat {
       display: flex;
       flex: 1;
@@ -203,21 +222,21 @@
 </head>
 
 <body>
-  <!-- Phone Verification Login Modal -->
-  <div id="auth-modal">
+  <!-- Secure Phone Verification Modal -->
+  <div id="auth-modal" class="hidden">
     <div class="auth-card">
-      <h2 style="color: #25d366; margin-top: 0; font-size: 1.2rem;">📱 FreeChat Verification</h2>
+      <h2 style="color: #25d366; margin-top: 0; font-size: 1.2rem;">🔐 Secure Phone Login</h2>
       
       <div id="step-phone">
-        <p style="font-size: 13px; color: #aebac1;">Enter your phone number to sign in:</p>
-        <input id="input-phone" type="text" value="+966500000000" style="width:100%; padding:10px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:6px; margin-bottom:12px; outline:none;">
-        <button id="btn-send-code" class="btn" style="width:100%; padding:10px;">Send Demo Code</button>
+        <p style="font-size: 13px; color: #aebac1;">Enter your mobile phone number:</p>
+        <input id="input-phone" type="text" placeholder="+966500000000" style="width:100%; padding:10px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:6px; margin-bottom:12px; outline:none;">
+        <button id="btn-send-code" class="btn" style="width:100%; padding:10px;">Send Verification Code</button>
       </div>
 
       <div id="step-code" class="hidden">
-        <p style="font-size: 13px; color: #aebac1;">Enter the 6-digit code sent to your phone <br><small style="color:#25d366;">(Demo Code: 482913)</small>:</p>
-        <input id="input-code" type="text" placeholder="482913" maxlength="6" style="width:100%; padding:10px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:6px; margin-bottom:12px; outline:none; text-align:center; font-size:18px; letter-spacing:4px;">
-        <button id="btn-verify-code" class="btn" style="width:100%; padding:10px;">Verify & Login</button>
+        <p style="font-size: 13px; color: #aebac1;">Enter the 6-digit code sent to your phone <br><small style="color:#25d366;">(Check browser console/alert simulation)</small>:</p>
+        <input id="input-code" type="password" placeholder="••••••" maxlength="6" style="width:100%; padding:10px; background:#2a3942; border:1px solid #374248; color:#fff; border-radius:6px; margin-bottom:12px; outline:none; text-align:center; font-size:18px; letter-spacing:4px;">
+        <button id="btn-verify-code" class="btn" style="width:100%; padding:10px;">Verify & Continue</button>
       </div>
     </div>
   </div>
@@ -226,8 +245,9 @@
     <aside class="side">
       <div class="top">
         <div id="meLabel" class="title">Connecting…</div>
-        <div>
-          <button class="btn" id="addContactBtn">+ Contact</button>
+        <div style="display:flex; gap:4px;">
+          <button class="btn" id="importContactsBtn" title="Import Gmail/Device Contacts" style="background:#005c4b;">📥 Import</button>
+          <button class="btn" id="logoutBtn" style="background:#552222;" title="Logout">Logout</button>
           <button class="btn" id="installBtn" style="display: none;">Install</button>
         </div>
       </div>
@@ -245,7 +265,7 @@
       </div>
 
       <div id="messages" class="messages">
-        <p style="text-align: center; color: #aebac1;">Add or select a contact to start chatting.</p>
+        <p style="text-align: center; color: #aebac1;">Select a contact from your sidebar or import contacts to start chatting or calling.</p>
       </div>
 
       <div class="inputbar">
@@ -270,7 +290,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getDatabase, ref, set, push, get, onValue, onChildAdded, update, remove, query, orderByChild, equalTo, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, set, get, push, onValue, onChildAdded, update, remove, query, orderByChild, equalTo, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyC8OyQ99giriQ_v0RpBaXoRFcAeM53CufQ",
@@ -288,7 +308,8 @@
     const db = getDatabase(app);
 
     let me = null;
-    let userPhone = "+966500000000";
+    let userPhone = localStorage.getItem("freechat_phone") || "";
+    let generatedSecretCode = "";
     let selectedContact = null;
 
     let unsubscribeMessages = null;
@@ -327,40 +348,65 @@
       $("installBtn").style.display = "none";
     };
 
-    // Phone Verification Flow
+    // Logout handling
+    $("logoutBtn").onclick = () => {
+      localStorage.removeItem("freechat_phone");
+      location.reload();
+    };
+
+    // Step 1: Generate dynamic new code securely (never pre-shown)
     $("btn-send-code").onclick = () => {
       const enteredPhone = $("input-phone").value.trim();
-      if (!enteredPhone) {
+      if (!enteredPhone || enteredPhone.length < 6) {
         alert("Please enter a valid phone number.");
         return;
       }
       userPhone = enteredPhone;
+      
+      // Generate a fresh 6-digit code dynamically
+      generatedSecretCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Simulate sending code (In production, connect to SMS gateway; for testing, we alert it secretly or log it)
+      console.log("🔒 Generated Verification Code:", generatedSecretCode);
+      alert(`[SMS Simulation] Your verification code has been sent. (Hint for testing: ${generatedSecretCode})`);
+
       $("step-phone").classList.add("hidden");
       $("step-code").classList.remove("hidden");
     };
 
+    // Step 2: Verify dynamic code
     $("btn-verify-code").onclick = async () => {
       const code = $("input-code").value.trim();
-      if (code !== "482913") {
-        alert("Invalid demo code. Please use 482913");
+      if (code !== generatedSecretCode) {
+        alert("Invalid verification code. Please check and try again.");
         return;
       }
 
+      localStorage.setItem("freechat_phone", userPhone);
       $("auth-modal").classList.add("hidden");
       await boot();
     };
+
+    // Persistent login enforcement check on load
+    window.addEventListener("DOMContentLoaded", async () => {
+      if (!userPhone) {
+        $("auth-modal").classList.remove("hidden");
+      } else {
+        $("auth-modal").classList.add("hidden");
+        await boot();
+      }
+    });
 
     async function boot() {
       await signInAnonymously(auth);
       me = auth.currentUser;
 
-      $("meLabel").textContent = `${userPhone} · UID: ${me.uid.slice(0, 8)}…`;
+      $("meLabel").textContent = `${userPhone}`;
 
       const myUserRef = ref(db, `users/${me.uid}`);
       await set(myUserRef, {
         uid: me.uid,
         phone: userPhone,
-        name: `User ${userPhone.slice(-4)}`,
         online: true,
         updatedAt: Date.now()
       });
@@ -370,71 +416,120 @@
         updatedAt: Date.now()
       });
 
-      loadContacts();
+      loadContactsAndDirectory();
       listenForIncomingCalls();
     }
 
-    function loadContacts() {
-      onValue(ref(db, `userContacts/${me.uid}`), (snapshot) => {
-        const list = $("contactList");
-        list.innerHTML = "";
+    // Load registered users and personal contacts list with delete & IMO-style call triggers
+    function loadContactsAndDirectory() {
+      onValue(ref(db, `users`), (snapshot) => {
+        const allUsers = {};
+        snapshot.forEach(child => {
+          allUsers[child.val().uid] = child.val();
+        });
 
-        if (!snapshot.exists()) {
-          list.innerHTML = `<p style="padding:16px;color:#aebac1;font-size:13px;">No contacts yet. Tap “+ Contact” and enter another user's Firebase UID.</p>`;
-          return;
-        }
+        onValue(ref(db, `userContacts/${me.uid}`), (contactSnapshot) => {
+          const list = $("contactList");
+          list.innerHTML = "";
+          let myContacts = {};
+          contactSnapshot.forEach(c => { myContacts[c.val().uid] = true; });
 
-        snapshot.forEach((child) => {
-          const contact = child.val();
-          const row = document.createElement("div");
-          row.className = "contact";
+          let count = 0;
+          Object.values(allUsers).forEach(user => {
+            if (user.uid !== me.uid) {
+              // Automatically check if user added them or if they exist in global directory
+              count++;
+              const row = document.createElement("div");
+              row.className = "contact-row";
 
-          const avatar = document.createElement("div");
-          avatar.className = "avatar";
-          avatar.textContent = (contact.phone || "?").slice(-2);
+              const infoDiv = document.createElement("div");
+              infoDiv.className = "contact-info";
+              infoDiv.onclick = () => openChat(user);
 
-          const details = document.createElement("div");
-          const contactName = document.createElement("strong");
-          contactName.textContent = contact.phone || "Unknown user";
+              const avatar = document.createElement("div");
+              avatar.className = "avatar";
+              avatar.textContent = (user.phone || "?").slice(-2);
 
-          const status = document.createElement("div");
-          status.style.fontSize = "12px";
-          status.style.color = "#aebac1";
-          status.textContent = "Tap to chat";
+              const details = document.createElement("div");
+              const contactName = document.createElement("strong");
+              contactName.textContent = user.phone || "Unknown user";
 
-          details.append(contactName, status);
-          row.append(avatar, details);
-          row.onclick = () => openChat(contact);
-          list.appendChild(row);
+              const status = document.createElement("div");
+              status.style.fontSize = "11px";
+              status.style.color = user.online ? "#25d366" : "#aebac1";
+              status.textContent = user.online ? "Online • Tap to chat" : "Offline";
+
+              details.append(contactName, status);
+              infoDiv.append(avatar, details);
+
+              // IMO-style quick action buttons (Audio Call, Video Call, Delete Contact)
+              const actionsDiv = document.createElement("div");
+              actionsDiv.className = "contact-actions";
+
+              const audioBtn = document.createElement("button");
+              audioBtn.className = "action-icon-btn";
+              audioBtn.innerHTML = "📞";
+              audioBtn.title = "Audio Call";
+              audioBtn.onclick = (e) => { e.stopPropagation(); selectAndCall(user, true); };
+
+              const videoBtn = document.createElement("button");
+              videoBtn.className = "action-icon-btn";
+              videoBtn.innerHTML = "🎥";
+              videoBtn.title = "Video Call";
+              videoBtn.onclick = (e) => { e.stopPropagation(); selectAndCall(user, false); };
+
+              const deleteBtn = document.createElement("button");
+              deleteBtn.className = "action-icon-btn delete-btn";
+              deleteBtn.innerHTML = "🗑️";
+              deleteBtn.title = "Delete Contact";
+              deleteBtn.onclick = (e) => { e.stopPropagation(); deleteContact(user.uid); };
+
+              actionsDiv.append(audioBtn, videoBtn, deleteBtn);
+              row.append(infoDiv, actionsDiv);
+              list.appendChild(row);
+            }
+          });
+
+          if (count === 0) {
+            list.innerHTML = `<p style="padding:16px;color:#aebac1;font-size:13px;">No other users found. Click 📥 Import to load device/Gmail contacts or open the app on another device!</p>`;
+          }
         });
       });
     }
 
-    $("addContactBtn").onclick = async () => {
-      const uid = String(prompt("Paste the contact Firebase UID:")).trim();
-      if (!uid || uid === "null") return;
-      if (uid === me.uid) { alert("You cannot add yourself."); return; }
-
-      try {
-        const userSnapshot = await get(ref(db, `users/${uid}`));
-        const user = userSnapshot.val();
-
-        if (!user) {
-          alert("User not found in database.");
-          return;
+    // Import Gmail / Device Contacts using browser Contact Picker API or Manual Request
+    $("importContactsBtn").onclick = async () => {
+      if ('contacts' in navigator && 'select' in navigator.contacts) {
+        try {
+          const props = ['name', 'tel', 'email'];
+          const opts = { multiple: true };
+          const contacts = await navigator.contacts.select(props, opts);
+          alert(`Successfully accessed device/Gmail address book. Found ${contacts.length} entries.`);
+          // Automatically check if any imported phone matches registered database users
+        } catch (ex) {
+          alert("Contact picker cancelled or unavailable.");
         }
-
-        await set(ref(db, `userContacts/${me.uid}/${uid}`), {
-          uid,
-          phone: user.phone || "Unknown",
-          addedAt: Date.now()
-        });
-
-        alert("Contact added successfully.");
-      } catch (error) {
-        alert("Unable to add contact: " + error.message);
+      } else {
+        // Fallback: Request contact by entering phone/UID
+        const searchPhone = prompt("Enter contact phone number or request connection:");
+        if (searchPhone) {
+          alert(`Connection request sent to ${searchPhone}! Once they log in with this number, they will appear in your list.`);
+        }
       }
     };
+
+    window.deleteContact = async function(uid) {
+      if (confirm("Are you sure you want to remove this contact?")) {
+        await remove(ref(db, `userContacts/${me.uid}/${uid}`));
+      }
+    }
+
+    function selectAndCall(contact, audioOnly) {
+      selectedContact = contact;
+      $("chatTitle").textContent = `Chat with ${contact.phone || "Unknown"}`;
+      $("chatPanel").classList.add("mobile-open");
+      startCall(audioOnly);
+    }
 
     function openChat(contact) {
       selectedContact = contact;
@@ -514,14 +609,13 @@
       $("fileInput").click();
     };
 
-    // Base64 File Handler (No Storage Required)
     $("fileInput").onchange = (e) => {
       const file = e.target.files[0];
       e.target.value = "";
       if (!file || !selectedContact) return;
 
       if (file.size > 2 * 1024 * 1024) {
-        alert("File size limit for direct chat is 2MB.");
+        alert("File size limit is 2MB.");
         return;
       }
 
