@@ -2,20 +2,25 @@
   "id": "./",
   "name": "FreeChat P2P",
   "short_name": "FreeChat",
+  "description": "Free unlimited P2P chat and calls",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0b141a",
   "theme_color": "#075e54",
   "icons": [
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
