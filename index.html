@@ -36,6 +36,15 @@
     letter-spacing: 8px; font-weight: bold; color: #075e54; margin: 15px 0;
   }
 
+  /* Status bar */
+  .status-bar {
+    padding: 8px 12px; font-size: 12px; font-weight: 600; text-align: center;
+    display: none;
+  }
+  .status-bar.error { background: #ffebee; color: #c62828; display: block; }
+  .status-bar.success { background: #e8f5e9; color: #2e7d32; display: block; }
+  .status-bar.warning { background: #fff3e0; color: #ef6c00; display: block; }
+
   .header {
     background: #075e54; color: white; padding: 12px 16px;
     display: flex; align-items: center; justify-content: space-between;
@@ -197,6 +206,7 @@
 
 <!-- APP SCREEN -->
 <div id="appScreen">
+  <div id="statusBar" class="status-bar"></div>
   <div class="header">
     <div>
       <h2>FreeChat</h2>
@@ -213,6 +223,7 @@
     <input type="tel" id="newContactInput" placeholder="+918847810037">
     <button onclick="addContact()">➕ Add</button>
     <button onclick="importContacts()" title="Import from device">📥 Import</button>
+    <button onclick="forceSync()" title="Force check">🔄</button>
   </div>
 
   <div class="contact-list" id="contactList"></div>
@@ -287,7 +298,7 @@ const auth = firebase.auth();
 const db = firebase.database();
 
 // ========================
-// GLOBAL STATE - PHONE ONLY
+// GLOBAL STATE
 // ========================
 let myPhone = localStorage.getItem('freechat_phone') || '';
 let currentContact = null;
@@ -295,9 +306,11 @@ let currentCallId = null;
 let pc = null;
 let localStream = null;
 let contacts = {};
-let registeredPhones = {};   // phone -> { online, lastSeen }
+let registeredPhones = {};
 let activeChatRoom = null;
 let chatListener = null;
+let regRetryInterval = null;
+let pollInterval = null;
 
 const iceServers = {
   iceServers: [
@@ -319,6 +332,12 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+function setStatus(msg, type) {
+  const bar = document.getElementById('statusBar');
+  bar.textContent = msg;
+  bar.className = 'status-bar ' + (type || 'warning');
+}
+
 function escapeHtml(t) {
   const d = document.createElement('div');
   d.textContent = t;
@@ -326,7 +345,7 @@ function escapeHtml(t) {
 }
 
 // ========================
-// INIT - AUTO LOGIN BY PHONE
+// INIT
 // ========================
 if (myPhone) document.getElementById('phoneInput').value = myPhone;
 
@@ -344,19 +363,34 @@ function enterApp() {
   document.getElementById('appScreen').classList.add('active');
   document.getElementById('myPhoneDisplay').textContent = myPhone;
 
-  // Register this phone number globally
-  const regData = { online: true, lastSeen: Date.now() };
-  db.ref('registeredPhones/' + myPhone).set(regData)
-    .then(() => console.log('Registered phone:', myPhone))
-    .catch(e => console.error('Register failed:', e));
+  // Try to register immediately
+  tryRegisterPhone();
 
-  // Mark offline when disconnecting
-  db.ref('registeredPhones/' + myPhone + '/online').onDisconnect().set(false);
-  db.ref('registeredPhones/' + myPhone + '/lastSeen').onDisconnect().set(Date.now());
+  // Retry every 3 seconds until successful
+  if (regRetryInterval) clearInterval(regRetryInterval);
+  regRetryInterval = setInterval(tryRegisterPhone, 3000);
 
   loadMyContacts();
   listenRegisteredPhones();
+  startPolling(); // fallback polling every 2 seconds
   listenForCalls();
+}
+
+function tryRegisterPhone() {
+  const data = { online: true, lastSeen: Date.now() };
+  db.ref('registeredPhones/' + myPhone).set(data)
+    .then(() => {
+      setStatus('Connected — You are registered as ' + myPhone, 'success');
+      if (regRetryInterval) { clearInterval(regRetryInterval); regRetryInterval = null; }
+    })
+    .catch(e => {
+      console.error('Register failed:', e);
+      setStatus('ERROR: Cannot register phone. Check Firebase Rules! ' + e.message, 'error');
+    });
+
+  // Set disconnect handler
+  db.ref('registeredPhones/' + myPhone + '/online').onDisconnect().set(false);
+  db.ref('registeredPhones/' + myPhone + '/lastSeen').onDisconnect().set(Date.now());
 }
 
 function generateCode() {
@@ -397,32 +431,66 @@ function logout() {
   auth.signOut();
   localStorage.removeItem('freechat_phone');
   myPhone = '';
+  if (regRetryInterval) clearInterval(regRetryInterval);
+  if (pollInterval) clearInterval(pollInterval);
   location.reload();
 }
 
 // ========================
-// REGISTERED PHONES LISTENER
+// REGISTERED PHONES - REALTIME LISTENER
 // ========================
 function listenRegisteredPhones() {
   db.ref('registeredPhones').on('value', snap => {
     registeredPhones = snap.val() || {};
-    console.log('Registered phones:', Object.keys(registeredPhones));
+    const count = Object.keys(registeredPhones).length;
+    console.log('Realtime update — registered phones:', count, Object.keys(registeredPhones));
     renderContacts();
   }, err => {
     console.error('registeredPhones listener error:', err);
+    setStatus('Realtime listener failed: ' + err.message, 'error');
   });
 }
 
 // ========================
-// CONTACTS - PURELY BY PHONE NUMBER
+// POLLING FALLBACK - checks every 2 seconds
+// ========================
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(() => {
+    db.ref('registeredPhones').once('value')
+      .then(snap => {
+        registeredPhones = snap.val() || {};
+        renderContacts();
+      })
+      .catch(e => console.log('Poll error:', e));
+  }, 2000);
+}
+
+function forceSync() {
+  db.ref('registeredPhones').once('value')
+    .then(snap => {
+      registeredPhones = snap.val() || {};
+      console.log('Force sync — registered phones:', Object.keys(registeredPhones));
+      renderContacts();
+      showToast('Synced! Found ' + Object.keys(registeredPhones).length + ' registered phones');
+    })
+    .catch(e => {
+      showToast('Sync failed: ' + e.message);
+      setStatus('Sync failed: ' + e.message, 'error');
+    });
+}
+
+// ========================
+// CONTACTS
 // ========================
 function loadMyContacts() {
   db.ref('contacts/' + myPhone).on('value', snap => {
     contacts = snap.val() || {};
-    console.log('My contacts:', contacts);
+    console.log('My contacts loaded:', Object.keys(contacts));
     renderContacts();
   }, err => {
     console.error('contacts listener error:', err);
+    setStatus('Contacts load failed: ' + err.message, 'error');
   });
 }
 
@@ -511,7 +579,6 @@ function inviteContact(phone) {
 }
 
 async function importContacts() {
-  // Try device contacts API first
   if ('contacts' in navigator && 'ContactsManager' in window) {
     try {
       const results = await navigator.contacts.select(['name', 'tel'], { multiple: true });
@@ -521,8 +588,7 @@ async function importContacts() {
           const s = sanitizePhone(p);
           if (s && s !== myPhone && !contacts[s]) {
             db.ref('contacts/' + myPhone + '/' + s).set({
-              name: (contact.name || ['Contact'])[0],
-              added: Date.now()
+              name: (contact.name || ['Contact'])[0], added: Date.now()
             });
             added++;
           }
@@ -534,8 +600,6 @@ async function importContacts() {
       console.log('Device contacts failed:', e);
     }
   }
-
-  // Fallback: try to open native contact picker or prompt
   const phones = prompt('Paste phone numbers separated by commas:');
   if (!phones) return;
   let added = 0;
@@ -596,7 +660,7 @@ function sendMsg() {
 }
 
 // ========================
-// CALLS - BY PHONE NUMBER
+// CALLS
 // ========================
 function listenForCalls() {
   db.ref('calls').on('child_added', snap => {
