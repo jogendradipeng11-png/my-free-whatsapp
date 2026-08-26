@@ -330,32 +330,27 @@ let chatListener = null;
 let regRetryInterval = null;
 let pollInterval = null;
 
+// EXPRESS-TURN CREDENTIALS
 const iceServers = {
   iceServers: [
+    { urls: 'stun:free.expressturn.com:3478' },
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { 
-      urls: 'turn:openrelay.metered.ca:80', 
-      username: 'openrelayproject', 
-      credential: 'openrelayproject' 
+    {
+      urls: 'turn:free.expressturn.com:3478',
+      username: '000000002103089376',
+      credential: 'XTUCrhwxaPW7e2R3zJUpOOzDLZM='
     },
-    { 
-      urls: 'turn:openrelay.metered.ca:443', 
-      username: 'openrelayproject', 
-      credential: 'openrelayproject' 
-    },
-    { 
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp', 
-      username: 'openrelayproject', 
-      credential: 'openrelayproject' 
+    {
+      urls: 'turn:free.expressturn.com:3478?transport=tcp',
+      username: '000000002103089376',
+      credential: 'XTUCrhwxaPW7e2R3zJUpOOzDLZM='
     }
   ],
   iceTransportPolicy: 'all',
   bundlePolicy: 'max-bundle'
 };
 
-// Standardize phone numbers completely (removes spaces, dashes, parentheses, ensures single '+' prefix format)
+// Standardize phone numbers completely
 function sanitizePhone(phone) {
   if (!phone) return '';
   let cleaned = phone.replace(/[^0-9+]/g, '');
@@ -363,6 +358,20 @@ function sanitizePhone(phone) {
     cleaned = '+' + cleaned;
   }
   return cleaned;
+}
+
+// Fallback getUserMedia to avoid device not found errors
+async function getMediaStream(wantVideo) {
+  try {
+    if (wantVideo) {
+      return await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    } else {
+      return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    }
+  } catch (err) {
+    console.warn('Initial getUserMedia failed, attempting basic audio fallback...', err);
+    return await navigator.mediaDevices.getUserMedia({ audio: true });
+  }
 }
 
 function showToast(msg) {
@@ -743,14 +752,14 @@ function sendLocation() {
 }
 
 // ========================
-// CALLS (Voice & Video - Optimized)
+// CALLS (Cross-Network TURN Enabled)
 // ========================
 function listenForCalls() {
   db.ref('calls').on('child_added', snap => {
     const call = snap.val();
     if (!call) return;
     if (call.to === myPhone && call.from !== myPhone && call.status === 'ringing') {
-      if (Date.now() - call.created > 30000) { snap.ref.remove(); return; }
+      if (Date.now() - call.created > 35000) { snap.ref.remove(); return; }
       incomingCall(snap.key, call);
     }
   });
@@ -761,21 +770,23 @@ async function startCall(video = false, phone = null) {
   if (!target) return;
   if (!registeredPhones[target]) { alert('Not registered on FreeChat. Invite them first.'); return; }
 
+  try {
+    localStream = await getMediaStream(video);
+  } catch (err) {
+    alert('Microphone/Camera access failed: ' + err.message);
+    return;
+  }
+
   currentCallId = 'call_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   const callRef = db.ref('calls/' + currentCallId);
   pc = new RTCPeerConnection(iceServers);
 
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: video ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false
-    });
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-
     showCallUI(target, 'Calling...', video);
 
     pc.onicecandidate = e => {
-      if (e.candidate) callRef.child('candidates').push(e.candidate.toJSON());
+      if (e.candidate) callRef.child('candidates_caller').push(e.candidate.toJSON());
     };
 
     pc.ontrack = e => {
@@ -795,7 +806,8 @@ async function startCall(video = false, phone = null) {
       created: Date.now(), offer: { sdp: offer.sdp, type: offer.type }
     });
 
-    callRef.child('candidates').on('child_added', snap => {
+    // Callee ICE listener
+    callRef.child('candidates_callee').on('child_added', snap => {
       const c = snap.val();
       if (c && pc && pc.remoteDescription) {
         pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
@@ -817,7 +829,7 @@ async function startCall(video = false, phone = null) {
           endCallLocal(); s.ref.remove(); showToast('No answer');
         }
       });
-    }, 30000);
+    }, 35000);
 
   } catch (err) { alert('Call failed: ' + err.message); endCallLocal(); }
 }
@@ -840,13 +852,18 @@ async function incomingCall(callId, callData) {
     ringtone.pause();
     document.getElementById('callIncomingUI').style.display = 'none';
     document.getElementById('callActiveUI').style.display = 'block';
+
+    try {
+      localStream = await getMediaStream(video);
+    } catch (err) {
+      alert('Cannot access microphone/camera: ' + err.message);
+      declineCall();
+      return;
+    }
+
     pc = new RTCPeerConnection(iceServers);
 
     try {
-      localStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: video ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false
-      });
       localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
       document.getElementById('localVideo').srcObject = video ? localStream : null;
 
@@ -860,7 +877,7 @@ async function incomingCall(callId, callData) {
       };
 
       pc.onicecandidate = e => {
-        if (e.candidate) db.ref('calls/' + callId + '/candidates').push(e.candidate.toJSON());
+        if (e.candidate) db.ref('calls/' + callId + '/candidates_callee').push(e.candidate.toJSON());
       };
 
       await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
@@ -869,7 +886,8 @@ async function incomingCall(callId, callData) {
 
       await db.ref('calls/' + callId).update({ status: 'accepted', answer: { sdp: answer.sdp, type: answer.type } });
 
-      db.ref('calls/' + callId + '/candidates').on('child_added', snap => {
+      // Caller ICE listener
+      db.ref('calls/' + callId + '/candidates_caller').on('child_added', snap => {
         const c = snap.val();
         if (c && pc && pc.remoteDescription) {
           pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
