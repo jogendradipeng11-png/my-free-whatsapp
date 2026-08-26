@@ -138,7 +138,6 @@
     background: none !important; color: #555 !important; font-size: 20px !important; width: auto !important; height: auto !important;
   }
 
-  /* Media styling inside messages */
   .msg img, .msg video {
     max-width: 100%; max-height: 250px; border-radius: 6px; margin-top: 4px; display: block;
   }
@@ -254,7 +253,6 @@
   </div>
   <div class="chat-messages" id="chatMessages"></div>
   <div class="chat-input">
-    <!-- Hidden file inputs for WhatsApp features -->
     <input type="file" id="mediaInput" accept="image/*,video/*" style="display:none" onchange="handleMediaUpload(this)">
     <input type="file" id="docInput" accept=".pdf,.doc,.docx,.txt,.zip" style="display:none" onchange="handleDocUpload(this)">
     
@@ -280,6 +278,7 @@
   </div>
   <div id="callActiveUI" style="display:none;width:100%;height:100%;position:relative;">
     <video id="remoteVideo" autoplay playsinline></video>
+    <audio id="remoteAudio" autoplay></audio>
     <video id="localVideo" autoplay playsinline muted></video>
     <div class="call-controls">
       <button class="call-btn call-end" onclick="endCall()">📞</button>
@@ -636,7 +635,7 @@ function switchTab(tab) {
 }
 
 // ========================
-// CHAT & WHATSAPP FEATURES (Media, Docs, Location)
+// CHAT & WHATSAPP FEATURES
 // ========================
 function openChat(phone) {
   currentContact = phone;
@@ -695,7 +694,6 @@ function sendMsg() {
   input.value = '';
 }
 
-// Media Upload (Images & Videos compressed/read as Data URLs)
 function handleMediaUpload(input) {
   const file = input.files[0];
   if (!file || !activeChatRoom) return;
@@ -711,7 +709,6 @@ function handleMediaUpload(input) {
   reader.readAsDataURL(file);
 }
 
-// Document Upload
 function handleDocUpload(input) {
   const file = input.files[0];
   if (!file || !activeChatRoom) return;
@@ -726,7 +723,6 @@ function handleDocUpload(input) {
   reader.readAsDataURL(file);
 }
 
-// Location Sharing
 function sendLocation() {
   if (!navigator.geolocation) { alert('Geolocation is not supported by your browser'); return; }
   showToast('Fetching location...');
@@ -741,7 +737,7 @@ function sendLocation() {
 }
 
 // ========================
-// CALLS (Voice & Video)
+// CALLS (Voice & Video - Optimized)
 // ========================
 function listenForCalls() {
   db.ref('calls').on('child_added', snap => {
@@ -773,10 +769,16 @@ async function startCall(video = false, phone = null) {
     showCallUI(target, 'Calling...', video);
 
     pc.onicecandidate = e => {
-      if (e.candidate) callRef.child('candidates/' + myPhone).push(e.candidate.toJSON());
+      if (e.candidate) callRef.child('candidates').push(e.candidate.toJSON());
     };
+
     pc.ontrack = e => {
-      if (e.streams && e.streams[0]) document.getElementById('remoteVideo').srcObject = e.streams[0];
+      if (e.streams && e.streams[0]) {
+        const remoteVid = document.getElementById('remoteVideo');
+        const remoteAud = document.getElementById('remoteAudio');
+        if (remoteVid && video) remoteVid.srcObject = e.streams[0];
+        if (remoteAud) remoteAud.srcObject = e.streams[0];
+      }
     };
 
     const offer = await pc.createOffer();
@@ -787,14 +789,18 @@ async function startCall(video = false, phone = null) {
       created: Date.now(), offer: { sdp: offer.sdp, type: offer.type }
     });
 
+    callRef.child('candidates').on('child_added', snap => {
+      const c = snap.val();
+      if (c && pc && pc.remoteDescription) {
+        pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+      }
+    });
+
     callRef.on('value', async snap => {
       const data = snap.val();
       if (!data) { endCallLocal(); return; }
       if (data.status === 'accepted' && data.answer && !pc.currentRemoteDescription) {
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-        if (data.candidates && data.candidates[target]) {
-          Object.values(data.candidates[target]).forEach(c => { if (c) pc.addIceCandidate(new RTCIceCandidate(c)); });
-        }
       }
       if (data.status === 'ended') { endCallLocal(); snap.ref.remove(); }
     });
@@ -838,8 +844,18 @@ async function incomingCall(callId, callData) {
       localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
       document.getElementById('localVideo').srcObject = video ? localStream : null;
 
-      pc.ontrack = e => { if (e.streams && e.streams[0]) document.getElementById('remoteVideo').srcObject = e.streams[0]; };
-      pc.onicecandidate = e => { if (e.candidate) db.ref('calls/' + callId + '/candidates/' + myPhone).push(e.candidate.toJSON()); };
+      pc.ontrack = e => {
+        if (e.streams && e.streams[0]) {
+          const remoteVid = document.getElementById('remoteVideo');
+          const remoteAud = document.getElementById('remoteAudio');
+          if (remoteVid && video) remoteVid.srcObject = e.streams[0];
+          if (remoteAud) remoteAud.srcObject = e.streams[0];
+        }
+      };
+
+      pc.onicecandidate = e => {
+        if (e.candidate) db.ref('calls/' + callId + '/candidates').push(e.candidate.toJSON());
+      };
 
       await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
       const answer = await pc.createAnswer();
@@ -847,9 +863,13 @@ async function incomingCall(callId, callData) {
 
       await db.ref('calls/' + callId).update({ status: 'accepted', answer: { sdp: answer.sdp, type: answer.type } });
 
-      db.ref('calls/' + callId + '/candidates/' + from).on('child_added', snap => {
-        const c = snap.val(); if (c) pc.addIceCandidate(new RTCIceCandidate(c));
+      db.ref('calls/' + callId + '/candidates').on('child_added', snap => {
+        const c = snap.val();
+        if (c && pc && pc.remoteDescription) {
+          pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+        }
       });
+
       db.ref('calls/' + callId).on('value', snap => {
         if (!snap.val() || snap.val().status === 'ended') { endCallLocal(); snap.ref.remove(); }
       });
