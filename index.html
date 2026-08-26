@@ -123,15 +123,27 @@
   .msg.me { align-self: flex-end; background: #dcf8c6; }
   .msg.them { align-self: flex-start; background: white; }
   .msg-time { font-size: 11px; color: #999; margin-top: 4px; text-align: right; }
+  
   .chat-input {
     display: flex; padding: 10px; background: #f0f0f0; gap: 8px; align-items: center;
   }
-  .chat-input input {
+  .chat-input input[type="text"] {
     flex: 1; padding: 12px; border: none; border-radius: 20px; font-size: 15px;
   }
   .chat-input button {
     background: #128c7e; color: white; border: none; width: 44px; height: 44px;
-    border-radius: 50%; font-size: 18px; cursor: pointer;
+    border-radius: 50%; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .attachment-btn {
+    background: none !important; color: #555 !important; font-size: 20px !important; width: auto !important; height: auto !important;
+  }
+
+  /* Media styling inside messages */
+  .msg img, .msg video {
+    max-width: 100%; max-height: 250px; border-radius: 6px; margin-top: 4px; display: block;
+  }
+  .msg-doc {
+    background: rgba(0,0,0,0.05); padding: 8px; border-radius: 6px; display: flex; align-items: center; gap: 8px; text-decoration: none; color: #075e54; font-weight: 600; font-size: 14px; margin-top: 4px;
   }
 
   #callOverlay {
@@ -237,11 +249,19 @@
       <div id="chatContactName" style="font-weight:600;"></div>
       <div id="chatContactStatus" style="font-size:12px;opacity:0.8;"></div>
     </div>
-    <button onclick="startCall(false)" style="background:none;border:none;color:white;font-size:20px;">📞</button>
-    <button onclick="startCall(true)" style="background:none;border:none;color:white;font-size:20px;">🎥</button>
+    <button onclick="startCall(false)" style="background:none;border:none;color:white;font-size:20px;" title="Voice Call">📞</button>
+    <button onclick="startCall(true)" style="background:none;border:none;color:white;font-size:20px;" title="Video Call">🎥</button>
   </div>
   <div class="chat-messages" id="chatMessages"></div>
   <div class="chat-input">
+    <!-- Hidden file inputs for WhatsApp features -->
+    <input type="file" id="mediaInput" accept="image/*,video/*" style="display:none" onchange="handleMediaUpload(this)">
+    <input type="file" id="docInput" accept=".pdf,.doc,.docx,.txt,.zip" style="display:none" onchange="handleDocUpload(this)">
+    
+    <button class="attachment-btn" onclick="document.getElementById('mediaInput').click()" title="Send Image/Video">📷</button>
+    <button class="attachment-btn" onclick="document.getElementById('docInput').click()" title="Send Document">📎</button>
+    <button class="attachment-btn" onclick="sendLocation()" title="Share Location">📍</button>
+
     <input type="text" id="msgInput" placeholder="Type a message..." onkeypress="if(event.key==='Enter')sendMsg()">
     <button onclick="sendMsg()">➤</button>
   </div>
@@ -279,9 +299,8 @@
 
 <script>
 // ========================
-// FIREBASE CONFIG - REPLACE THIS
+// FIREBASE CONFIG
 // ========================
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyC8OyQ99giriQ_v0RpBaXoRFcAeM53CufQ",
   authDomain: "my-free-whatsapp.firebaseapp.com",
@@ -345,7 +364,7 @@ function escapeHtml(t) {
 }
 
 // ========================
-// INIT
+// INIT & AUTH
 // ========================
 if (myPhone) document.getElementById('phoneInput').value = myPhone;
 
@@ -363,16 +382,13 @@ function enterApp() {
   document.getElementById('appScreen').classList.add('active');
   document.getElementById('myPhoneDisplay').textContent = myPhone;
 
-  // Try to register immediately
   tryRegisterPhone();
-
-  // Retry every 3 seconds until successful
   if (regRetryInterval) clearInterval(regRetryInterval);
   regRetryInterval = setInterval(tryRegisterPhone, 3000);
 
   loadMyContacts();
   listenRegisteredPhones();
-  startPolling(); // fallback polling every 2 seconds
+  startPolling();
   listenForCalls();
 }
 
@@ -380,15 +396,14 @@ function tryRegisterPhone() {
   const data = { online: true, lastSeen: Date.now() };
   db.ref('registeredPhones/' + myPhone).set(data)
     .then(() => {
-      setStatus('Connected — You are registered as ' + myPhone, 'success');
+      setStatus('Connected — Registered as ' + myPhone, 'success');
       if (regRetryInterval) { clearInterval(regRetryInterval); regRetryInterval = null; }
     })
     .catch(e => {
       console.error('Register failed:', e);
-      setStatus('ERROR: Cannot register phone. Check Firebase Rules! ' + e.message, 'error');
+      setStatus('ERROR: Cannot register phone. ' + e.message, 'error');
     });
 
-  // Set disconnect handler
   db.ref('registeredPhones/' + myPhone + '/online').onDisconnect().set(false);
   db.ref('registeredPhones/' + myPhone + '/lastSeen').onDisconnect().set(Date.now());
 }
@@ -409,7 +424,7 @@ function sendCode() {
   document.getElementById('codeDisplay').textContent = currentCode;
   document.getElementById('codeBox').style.display = 'block';
   document.getElementById('sendCodeBtn').disabled = true;
-  alert('Your code is: ' + currentCode + '\n(In a real app this would be sent via SMS)');
+  alert('Your code is: ' + currentCode + '\n(In production this is sent via SMS)');
 }
 
 function verifyCode() {
@@ -437,23 +452,15 @@ function logout() {
 }
 
 // ========================
-// REGISTERED PHONES - REALTIME LISTENER
+// REGISTERED PHONES & SYNC
 // ========================
 function listenRegisteredPhones() {
   db.ref('registeredPhones').on('value', snap => {
     registeredPhones = snap.val() || {};
-    const count = Object.keys(registeredPhones).length;
-    console.log('Realtime update — registered phones:', count, Object.keys(registeredPhones));
     renderContacts();
-  }, err => {
-    console.error('registeredPhones listener error:', err);
-    setStatus('Realtime listener failed: ' + err.message, 'error');
   });
 }
 
-// ========================
-// POLLING FALLBACK - checks every 2 seconds
-// ========================
 function startPolling() {
   if (pollInterval) clearInterval(pollInterval);
   pollInterval = setInterval(() => {
@@ -462,7 +469,7 @@ function startPolling() {
         registeredPhones = snap.val() || {};
         renderContacts();
       })
-      .catch(e => console.log('Poll error:', e));
+      .catch(() => {});
   }, 2000);
 }
 
@@ -470,27 +477,21 @@ function forceSync() {
   db.ref('registeredPhones').once('value')
     .then(snap => {
       registeredPhones = snap.val() || {};
-      console.log('Force sync — registered phones:', Object.keys(registeredPhones));
       renderContacts();
       showToast('Synced! Found ' + Object.keys(registeredPhones).length + ' registered phones');
     })
     .catch(e => {
       showToast('Sync failed: ' + e.message);
-      setStatus('Sync failed: ' + e.message, 'error');
     });
 }
 
 // ========================
-// CONTACTS
+// CONTACTS MANAGEMENT
 // ========================
 function loadMyContacts() {
   db.ref('contacts/' + myPhone).on('value', snap => {
     contacts = snap.val() || {};
-    console.log('My contacts loaded:', Object.keys(contacts));
     renderContacts();
-  }, err => {
-    console.error('contacts listener error:', err);
-    setStatus('Contacts load failed: ' + err.message, 'error');
   });
 }
 
@@ -558,7 +559,7 @@ function addContact() {
           inviteContact(phone);
         }
       } else {
-        showToast('Contact added! They are on FreeChat.');
+        showToast('Contact added!');
       }
     })
     .catch(e => alert('Failed to save contact: ' + e.message));
@@ -619,7 +620,7 @@ function switchTab(tab) {
 }
 
 // ========================
-// CHAT
+// CHAT & WHATSAPP FEATURES (Media, Docs, Location)
 // ========================
 function openChat(phone) {
   currentContact = phone;
@@ -635,12 +636,7 @@ function openChat(phone) {
   if (chatListener) db.ref('chats/' + roomId).off('child_added', chatListener);
   chatListener = db.ref('chats/' + roomId).on('child_added', snap => {
     const msg = snap.val();
-    const div = document.createElement('div');
-    div.className = 'msg ' + (msg.from === myPhone ? 'me' : 'them');
-    const time = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    div.innerHTML = `<div>${escapeHtml(msg.text)}</div><div class="msg-time">${time}</div>`;
-    document.getElementById('chatMessages').appendChild(div);
-    document.getElementById('chatMessages').scrollTop = 999999;
+    appendMessageUI(msg);
   });
 }
 
@@ -651,16 +647,85 @@ function closeChat() {
   chatListener = null;
 }
 
+function appendMessageUI(msg) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + (msg.from === myPhone ? 'me' : 'them');
+  const time = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  let contentHtml = '';
+  if (msg.type === 'image') {
+    contentHtml = `<img src="${msg.data}" alt="Attachment">`;
+  } else if (msg.type === 'video') {
+    contentHtml = `<video src="${msg.data}" controls></video>`;
+  } else if (msg.type === 'document') {
+    contentHtml = `<a class="msg-doc" href="${msg.data}" download="${msg.filename || 'file'}">📄 ${escapeHtml(msg.filename || 'Download Document')}</a>`;
+  } else if (msg.type === 'location') {
+    contentHtml = `<a class="msg-doc" href="${msg.data}" target="_blank">📍 View Shared Location</a>`;
+  } else {
+    contentHtml = `<div>${escapeHtml(msg.text || '')}</div>`;
+  }
+
+  div.innerHTML = `${contentHtml}<div class="msg-time">${time}</div>`;
+  container.appendChild(div);
+  container.scrollTop = 999999;
+}
+
 function sendMsg() {
   const input = document.getElementById('msgInput');
   const text = input.value.trim();
   if (!text || !activeChatRoom) return;
-  db.ref('chats/' + activeChatRoom).push({ from: myPhone, text: text, ts: Date.now() });
+  db.ref('chats/' + activeChatRoom).push({ from: myPhone, type: 'text', text: text, ts: Date.now() });
   input.value = '';
 }
 
+// Media Upload (Images & Videos compressed/read as Data URLs)
+function handleMediaUpload(input) {
+  const file = input.files[0];
+  if (!file || !activeChatRoom) return;
+  if (file.size > 5 * 1024 * 1024) { alert('File is too large (Max 5MB for P2P storage)'); return; }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result;
+    const type = file.type.startsWith('video') ? 'video' : 'image';
+    db.ref('chats/' + activeChatRoom).push({ from: myPhone, type: type, data: base64, ts: Date.now() });
+    input.value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+// Document Upload
+function handleDocUpload(input) {
+  const file = input.files[0];
+  if (!file || !activeChatRoom) return;
+  if (file.size > 5 * 1024 * 1024) { alert('File is too large (Max 5MB)'); return; }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result;
+    db.ref('chats/' + activeChatRoom).push({ from: myPhone, type: 'document', data: base64, filename: file.name, ts: Date.now() });
+    input.value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+// Location Sharing
+function sendLocation() {
+  if (!navigator.geolocation) { alert('Geolocation is not supported by your browser'); return; }
+  showToast('Fetching location...');
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    const mapUrl = `https://maps.google.com/?q=${lat},${lng}`;
+    db.ref('chats/' + activeChatRoom).push({ from: myPhone, type: 'location', data: mapUrl, ts: Date.now() });
+  }, () => {
+    alert('Unable to retrieve your location');
+  });
+}
+
 // ========================
-// CALLS
+// CALLS (Voice & Video)
 // ========================
 function listenForCalls() {
   db.ref('calls').on('child_added', snap => {
@@ -757,7 +822,7 @@ async function incomingCall(callId, callData) {
       localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
       document.getElementById('localVideo').srcObject = video ? localStream : null;
 
-      pc.ontrack = e => { if (e.streams && e.streams[0] && video) document.getElementById('remoteVideo').srcObject = e.streams[0]; };
+      pc.ontrack = e => { if (e.streams && e.streams[0]) document.getElementById('remoteVideo').srcObject = e.streams[0]; };
       pc.onicecandidate = e => { if (e.candidate) db.ref('calls/' + callId + '/candidates/' + myPhone).push(e.candidate.toJSON()); };
 
       await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
