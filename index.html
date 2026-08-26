@@ -355,8 +355,14 @@ const iceServers = {
   bundlePolicy: 'max-bundle'
 };
 
+// Standardize phone numbers completely (removes spaces, dashes, parentheses, ensures single '+' prefix format)
 function sanitizePhone(phone) {
-  return phone.replace(/[^0-9+]/g, '');
+  if (!phone) return '';
+  let cleaned = phone.replace(/[^0-9+]/g, '');
+  if (!cleaned.startsWith('+') && cleaned.length >= 10) {
+    cleaned = '+' + cleaned;
+  }
+  return cleaned;
 }
 
 function showToast(msg) {
@@ -751,7 +757,7 @@ function listenForCalls() {
 }
 
 async function startCall(video = false, phone = null) {
-  const target = phone || currentContact;
+  const target = sanitizePhone(phone || currentContact);
   if (!target) return;
   if (!registeredPhones[target]) { alert('Not registered on FreeChat. Invite them first.'); return; }
 
