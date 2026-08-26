@@ -277,7 +277,7 @@
   </div>
   <div id="callActiveUI" style="display:none;width:100%;height:100%;position:relative;">
     <video id="remoteVideo" autoplay playsinline></video>
-    <audio id="remoteAudio" autoplay playsinline></audio>
+    <audio id="remoteAudio" autoplay></audio>
     <video id="localVideo" autoplay playsinline muted></video>
     <div class="call-controls">
       <button class="call-btn call-end" onclick="endCall()">📞</button>
@@ -330,28 +330,19 @@ let regRetryInterval = null;
 let pollInterval = null;
 let candidateQueue = [];
 
-// EXPRESS-TURN CREDENTIALS
+// OPTIMIZED WEBRTC CONFIG (Fast Gathering + max-bundle)
 const rtcConfig = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:free.expressturn.com:3478' },
+    { urls: 'stun:stun.l.google.com:19302' },
     {
       urls: 'turn:free.expressturn.com:3478',
       username: '000000002103089376',
       credential: 'XTUCrhwxaPW7e2R3zJUpOOzDLZM='
-    },
-    {
-      urls: 'turn:free.expressturn.com:3478?transport=udp',
-      username: '000000002103089376',
-      credential: 'XTUCrhwxaPW7e2R3zJUpOOzDLZM='
-    },
-    {
-      urls: 'turn:free.expressturn.com:3478?transport=tcp',
-      username: '000000002103089376',
-      credential: 'XTUCrhwxaPW7e2R3zJUpOOzDLZM='
     }
   ],
-  iceCandidatePoolSize: 10
+  bundlePolicy: 'max-bundle',
+  rtcpMuxPolicy: 'require'
 };
 
 function sanitizePhone(phone) {
@@ -363,25 +354,70 @@ function sanitizePhone(phone) {
   return cleaned;
 }
 
+// Optimized HD media constraints
 async function getMediaStream(wantVideo) {
+  const audioConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true
+  };
+
+  const videoConstraints = wantVideo ? {
+    width: { ideal: 1280, max: 1280 },
+    height: { ideal: 720, max: 720 },
+    frameRate: { ideal: 30, max: 30 },
+    facingMode: 'user'
+  } : false;
+
   try {
-    if (wantVideo) {
-      return await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-    } else {
-      return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    }
+    return await navigator.mediaDevices.getUserMedia({
+      audio: audioConstraints,
+      video: videoConstraints
+    });
   } catch (err) {
-    console.warn('Initial getUserMedia failed, attempting basic audio fallback...', err);
-    return await navigator.mediaDevices.getUserMedia({ audio: true });
+    console.warn('HD profile failed, falling back to basic profile:', err);
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: wantVideo ? { width: 640, height: 480 } : false
+      });
+    } catch (e) {
+      return await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
   }
 }
 
-// Queue handling for cross-network ICE candidates
+// Boost video bitrate for crisp quality
+async function optimizeSenderBitrates(peerConnection) {
+  try {
+    const senders = peerConnection.getSenders();
+    for (const sender of senders) {
+      if (!sender.track) continue;
+      const params = sender.getParameters();
+      if (!params.encodings || params.encodings.length === 0) {
+        params.encodings = [{}];
+      }
+
+      if (sender.track.kind === 'video') {
+        params.encodings[0].maxBitrate = 1500000; // 1.5 Mbps for smooth HD
+        params.encodings[0].maxFramerate = 30;
+        params.degradationPreference = 'maintain-framerate';
+        await sender.setParameters(params);
+      } else if (sender.track.kind === 'audio') {
+        params.encodings[0].maxBitrate = 64000; // 64 kbps HD Voice
+        await sender.setParameters(params);
+      }
+    }
+  } catch (err) {
+    console.warn('Bitrate tuning bypassed:', err);
+  }
+}
+
 function queueOrAddIceCandidate(candidateData) {
   if (!candidateData || !pc) return;
   const candidate = new RTCIceCandidate(candidateData);
   if (pc.remoteDescription && pc.remoteDescription.type) {
-    pc.addIceCandidate(candidate).catch(e => console.warn('ICE candidate add error:', e));
+    pc.addIceCandidate(candidate).catch(e => console.warn('ICE add error:', e));
   } else {
     candidateQueue.push(candidate);
   }
@@ -393,7 +429,7 @@ async function processCandidateQueue() {
     try {
       await pc.addIceCandidate(candidate);
     } catch (e) {
-      console.warn('Queue drain candidate error:', e);
+      console.warn('Queue candidate add error:', e);
     }
   }
 }
@@ -776,7 +812,7 @@ function sendLocation() {
 }
 
 // ========================
-// CALL ENGINE (Cross-Network TURN & Queued ICE)
+// FAST HIGH-QUALITY CALL ENGINE
 // ========================
 function listenForCalls() {
   db.ref('calls').on('child_added', snap => {
@@ -819,7 +855,8 @@ function setupPeerEvents(callRef, remoteRole, video) {
     console.log('Peer connection state:', pc.connectionState);
     if (pc.connectionState === 'connected') {
       const callStatus = document.getElementById('callStatus');
-      if (callStatus) callStatus.textContent = 'Connected';
+      if (callStatus) callStatus.textContent = 'Connected (HD)';
+      optimizeSenderBitrates(pc);
     }
   };
 }
@@ -845,7 +882,10 @@ async function startCall(video = false, phone = null) {
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     showCallUI(target, 'Calling...', video);
 
-    const offer = await pc.createOffer();
+    const offer = await pc.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: video
+    });
     await pc.setLocalDescription(offer);
 
     await callRef.set({
@@ -853,7 +893,6 @@ async function startCall(video = false, phone = null) {
       created: Date.now(), offer: { sdp: offer.sdp, type: offer.type }
     });
 
-    // Listen for Callee ICE candidates
     callRef.child('candidates_callee').on('child_added', snap => {
       queueOrAddIceCandidate(snap.val());
     });
@@ -888,7 +927,7 @@ async function incomingCall(callId, callData) {
   document.getElementById('callIncomingUI').style.display = 'block';
   document.getElementById('callActiveUI').style.display = 'none';
   document.getElementById('callName').textContent = contacts[from]?.name || from;
-  document.getElementById('callStatus').textContent = video ? 'Incoming video call...' : 'Incoming voice call...';
+  document.getElementById('callStatus').textContent = video ? 'Incoming HD video call...' : 'Incoming voice call...';
   document.getElementById('callOverlay').classList.add('active');
 
   const ringtone = document.getElementById('ringtone');
@@ -915,7 +954,6 @@ async function incomingCall(callId, callData) {
       localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
       document.getElementById('localVideo').srcObject = video ? localStream : null;
 
-      // Listen for Caller ICE candidates immediately
       callRef.child('candidates_caller').on('child_added', snap => {
         queueOrAddIceCandidate(snap.val());
       });
