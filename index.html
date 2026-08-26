@@ -36,7 +36,6 @@
     letter-spacing: 8px; font-weight: bold; color: #075e54; margin: 15px 0;
   }
 
-  /* Status bar */
   .status-bar {
     padding: 8px 12px; font-size: 12px; font-weight: 600; text-align: center;
     display: none;
@@ -278,7 +277,7 @@
   </div>
   <div id="callActiveUI" style="display:none;width:100%;height:100%;position:relative;">
     <video id="remoteVideo" autoplay playsinline></video>
-    <audio id="remoteAudio" autoplay></audio>
+    <audio id="remoteAudio" autoplay playsinline></audio>
     <video id="localVideo" autoplay playsinline muted></video>
     <div class="call-controls">
       <button class="call-btn call-end" onclick="endCall()">📞</button>
@@ -329,14 +328,20 @@ let activeChatRoom = null;
 let chatListener = null;
 let regRetryInterval = null;
 let pollInterval = null;
+let candidateQueue = [];
 
 // EXPRESS-TURN CREDENTIALS
-const iceServers = {
+const rtcConfig = {
   iceServers: [
-    { urls: 'stun:free.expressturn.com:3478' },
     { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:free.expressturn.com:3478' },
     {
       urls: 'turn:free.expressturn.com:3478',
+      username: '000000002103089376',
+      credential: 'XTUCrhwxaPW7e2R3zJUpOOzDLZM='
+    },
+    {
+      urls: 'turn:free.expressturn.com:3478?transport=udp',
       username: '000000002103089376',
       credential: 'XTUCrhwxaPW7e2R3zJUpOOzDLZM='
     },
@@ -346,11 +351,9 @@ const iceServers = {
       credential: 'XTUCrhwxaPW7e2R3zJUpOOzDLZM='
     }
   ],
-  iceTransportPolicy: 'all',
-  bundlePolicy: 'max-bundle'
+  iceCandidatePoolSize: 10
 };
 
-// Standardize phone numbers completely
 function sanitizePhone(phone) {
   if (!phone) return '';
   let cleaned = phone.replace(/[^0-9+]/g, '');
@@ -360,7 +363,6 @@ function sanitizePhone(phone) {
   return cleaned;
 }
 
-// Fallback getUserMedia to avoid device not found errors
 async function getMediaStream(wantVideo) {
   try {
     if (wantVideo) {
@@ -371,6 +373,28 @@ async function getMediaStream(wantVideo) {
   } catch (err) {
     console.warn('Initial getUserMedia failed, attempting basic audio fallback...', err);
     return await navigator.mediaDevices.getUserMedia({ audio: true });
+  }
+}
+
+// Queue handling for cross-network ICE candidates
+function queueOrAddIceCandidate(candidateData) {
+  if (!candidateData || !pc) return;
+  const candidate = new RTCIceCandidate(candidateData);
+  if (pc.remoteDescription && pc.remoteDescription.type) {
+    pc.addIceCandidate(candidate).catch(e => console.warn('ICE candidate add error:', e));
+  } else {
+    candidateQueue.push(candidate);
+  }
+}
+
+async function processCandidateQueue() {
+  while (candidateQueue.length > 0) {
+    const candidate = candidateQueue.shift();
+    try {
+      await pc.addIceCandidate(candidate);
+    } catch (e) {
+      console.warn('Queue drain candidate error:', e);
+    }
   }
 }
 
@@ -650,7 +674,7 @@ function switchTab(tab) {
 }
 
 // ========================
-// CHAT & WHATSAPP FEATURES
+// CHAT & ATTACHMENTS
 // ========================
 function openChat(phone) {
   currentContact = phone;
@@ -752,7 +776,7 @@ function sendLocation() {
 }
 
 // ========================
-// CALLS (Cross-Network TURN Enabled)
+// CALL ENGINE (Cross-Network TURN & Queued ICE)
 // ========================
 function listenForCalls() {
   db.ref('calls').on('child_added', snap => {
@@ -763,6 +787,41 @@ function listenForCalls() {
       incomingCall(snap.key, call);
     }
   });
+}
+
+function setupPeerEvents(callRef, remoteRole, video) {
+  candidateQueue = [];
+
+  pc.onicecandidate = e => {
+    if (e.candidate) {
+      callRef.child(remoteRole === 'callee' ? 'candidates_caller' : 'candidates_callee').push(e.candidate.toJSON());
+    }
+  };
+
+  pc.ontrack = e => {
+    if (e.streams && e.streams[0]) {
+      const stream = e.streams[0];
+      const remoteVid = document.getElementById('remoteVideo');
+      const remoteAud = document.getElementById('remoteAudio');
+
+      if (remoteVid && video) {
+        remoteVid.srcObject = stream;
+        remoteVid.play().catch(() => {});
+      }
+      if (remoteAud) {
+        remoteAud.srcObject = stream;
+        remoteAud.play().catch(() => {});
+      }
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    console.log('Peer connection state:', pc.connectionState);
+    if (pc.connectionState === 'connected') {
+      const callStatus = document.getElementById('callStatus');
+      if (callStatus) callStatus.textContent = 'Connected';
+    }
+  };
 }
 
 async function startCall(video = false, phone = null) {
@@ -779,24 +838,12 @@ async function startCall(video = false, phone = null) {
 
   currentCallId = 'call_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   const callRef = db.ref('calls/' + currentCallId);
-  pc = new RTCPeerConnection(iceServers);
+  pc = new RTCPeerConnection(rtcConfig);
 
   try {
+    setupPeerEvents(callRef, 'callee', video);
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     showCallUI(target, 'Calling...', video);
-
-    pc.onicecandidate = e => {
-      if (e.candidate) callRef.child('candidates_caller').push(e.candidate.toJSON());
-    };
-
-    pc.ontrack = e => {
-      if (e.streams && e.streams[0]) {
-        const remoteVid = document.getElementById('remoteVideo');
-        const remoteAud = document.getElementById('remoteAudio');
-        if (remoteVid && video) remoteVid.srcObject = e.streams[0];
-        if (remoteAud) remoteAud.srcObject = e.streams[0];
-      }
-    };
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -806,19 +853,18 @@ async function startCall(video = false, phone = null) {
       created: Date.now(), offer: { sdp: offer.sdp, type: offer.type }
     });
 
-    // Callee ICE listener
+    // Listen for Callee ICE candidates
     callRef.child('candidates_callee').on('child_added', snap => {
-      const c = snap.val();
-      if (c && pc && pc.remoteDescription) {
-        pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
-      }
+      queueOrAddIceCandidate(snap.val());
     });
 
     callRef.on('value', async snap => {
       const data = snap.val();
       if (!data) { endCallLocal(); return; }
+
       if (data.status === 'accepted' && data.answer && !pc.currentRemoteDescription) {
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+        await processCandidateQueue();
       }
       if (data.status === 'ended') { endCallLocal(); snap.ref.remove(); }
     });
@@ -861,40 +907,28 @@ async function incomingCall(callId, callData) {
       return;
     }
 
-    pc = new RTCPeerConnection(iceServers);
+    const callRef = db.ref('calls/' + callId);
+    pc = new RTCPeerConnection(rtcConfig);
 
     try {
+      setupPeerEvents(callRef, 'caller', video);
       localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
       document.getElementById('localVideo').srcObject = video ? localStream : null;
 
-      pc.ontrack = e => {
-        if (e.streams && e.streams[0]) {
-          const remoteVid = document.getElementById('remoteVideo');
-          const remoteAud = document.getElementById('remoteAudio');
-          if (remoteVid && video) remoteVid.srcObject = e.streams[0];
-          if (remoteAud) remoteAud.srcObject = e.streams[0];
-        }
-      };
-
-      pc.onicecandidate = e => {
-        if (e.candidate) db.ref('calls/' + callId + '/candidates_callee').push(e.candidate.toJSON());
-      };
+      // Listen for Caller ICE candidates immediately
+      callRef.child('candidates_caller').on('child_added', snap => {
+        queueOrAddIceCandidate(snap.val());
+      });
 
       await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+      await processCandidateQueue();
+
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
-      await db.ref('calls/' + callId).update({ status: 'accepted', answer: { sdp: answer.sdp, type: answer.type } });
+      await callRef.update({ status: 'accepted', answer: { sdp: answer.sdp, type: answer.type } });
 
-      // Caller ICE listener
-      db.ref('calls/' + callId + '/candidates_caller').on('child_added', snap => {
-        const c = snap.val();
-        if (c && pc && pc.remoteDescription) {
-          pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
-        }
-      });
-
-      db.ref('calls/' + callId).on('value', snap => {
+      callRef.on('value', snap => {
         if (!snap.val() || snap.val().status === 'ended') { endCallLocal(); snap.ref.remove(); }
       });
     } catch (err) { alert('Answer failed: ' + err.message); declineCall(); }
@@ -933,6 +967,7 @@ function endCallLocal() {
   if (pc) { pc.close(); pc = null; }
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
   currentCallId = null;
+  candidateQueue = [];
   window._pendingAccept = null;
   window._pendingDecline = null;
 }
